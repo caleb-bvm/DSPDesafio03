@@ -1,0 +1,93 @@
+@using EquiposMVC.Services
+@model EquipoIndexViewModel
+@{
+    ViewData["Title"] = "Equipos";
+    var rol = Context.Session.GetString(SessionKeys.Rol);
+    var esEstudiante = rol == "Estudiante";
+}
+<div class="page-heading">
+    <div><span class="eyebrow">Inventario</span><h1>@(esEstudiante ? "Equipos disponibles" : "Equipos")</h1><p>Encuentra el equipo que necesitas y revisa su estado.</p></div>
+    @if (rol == "Admin")
+    {
+        <a class="button button-primary" asp-action="Create">Nuevo equipo</a>
+    }
+</div>
+<form asp-action="Index" method="get" class="filter-card" aria-label="Filtros de equipos">
+    <div class="field filter-search"><label for="texto">Buscar</label><input id="texto" name="texto" value="@Model.Texto" placeholder="Nombre o código" /></div>
+    <div class="field"><label for="categoriaId">Categoría</label>
+        <select id="categoriaId" name="categoriaId">
+            <option value="">Todas</option>
+            @foreach (var categoria in Model.Categorias)
+            {
+                <option value="@categoria.Id" selected="@(Model.CategoriaId == categoria.Id)">@categoria.Nombre</option>
+            }
+        </select>
+    </div>
+    @if (!esEstudiante)
+    {
+        <div class="field"><label for="estado">Estado</label>
+            <select id="estado" name="estado">
+                <option value="">Todos</option>
+                <option value="Disponible" selected="@(Model.Estado == "Disponible")">Disponible</option>
+                <option value="Prestado" selected="@(Model.Estado == "Prestado")">Prestado</option>
+                <option value="Mantenimiento" selected="@(Model.Estado == "Mantenimiento")">Mantenimiento</option>
+            </select>
+        </div>
+    }
+    <button class="button button-secondary" type="submit">Filtrar</button>
+    <a class="button button-quiet" asp-action="Index">Limpiar</a>
+</form>
+<section class="list-card">
+    <div class="list-heading"><span>@Model.Pagina.TotalCount @(Model.Pagina.TotalCount == 1 ? "equipo" : "equipos")</span><span>Página @Model.Pagina.Page de @Math.Max(1, Model.Pagina.TotalPages)</span></div>
+    @if (Model.Pagina.Items.Count == 0)
+    {
+        <div class="empty-state"><h2>No encontramos equipos</h2><p>Prueba otros filtros para ver más resultados.</p></div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table>
+                <thead><tr><th>Equipo</th><th>Categoría</th><th>Estado</th><th class="actions-heading">Acciones</th></tr></thead>
+                <tbody>
+                @foreach (var equipo in Model.Pagina.Items)
+                {
+                    <tr>
+                        <td><div class="item-title">@equipo.Nombre</div><div class="item-subtitle">@equipo.CodigoInventario</div></td>
+                        <td>@equipo.CategoriaNombre</td>
+                        <td><span class="status status-@equipo.Estado.ToLowerInvariant()">@equipo.Estado</span></td>
+                        <td class="table-actions">
+                            @if ((rol is "Admin" or "Docente") && equipo.Estado == "Disponible")
+                            {
+                                <a class="text-link" asp-controller="Prestamo" asp-action="Create" asp-route-equipoId="@equipo.Id">Prestar</a>
+                            }
+                            @if (rol == "Admin")
+                            {
+                                <a class="text-link" asp-action="Edit" asp-route-id="@equipo.Id">Editar</a>
+                                <a class="text-link danger-link" asp-action="Delete" asp-route-id="@equipo.Id">Eliminar</a>
+                            }
+                            @if (esEstudiante)
+                            {
+                                <span class="subtle">Consulta</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+@if (Model.Pagina.TotalPages > 1)
+{
+    <nav class="pagination" aria-label="Páginas de equipos">
+        @if (Model.Pagina.Page > 1)
+        {
+            <a class="button button-quiet" asp-action="Index" asp-route-texto="@Model.Texto" asp-route-categoriaId="@Model.CategoriaId" asp-route-estado="@Model.Estado" asp-route-page="@(Model.Pagina.Page - 1)">Anterior</a>
+        }
+        <span>Página @Model.Pagina.Page de @Model.Pagina.TotalPages</span>
+        @if (Model.Pagina.Page < Model.Pagina.TotalPages)
+        {
+            <a class="button button-quiet" asp-action="Index" asp-route-texto="@Model.Texto" asp-route-categoriaId="@Model.CategoriaId" asp-route-estado="@Model.Estado" asp-route-page="@(Model.Pagina.Page + 1)">Siguiente</a>
+        }
+    </nav>
+}

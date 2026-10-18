@@ -1,0 +1,15 @@
+@model CategoriaDto
+@{
+    ViewData["Title"] = "Eliminar categoría";
+}
+<div class="page-heading"><div><span class="eyebrow">Categorías</span><h1>Eliminar categoría</h1><p>Confirma esta acción antes de continuar.</p></div></div>
+<section class="form-card narrow-card">
+    <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+    <p>¿Eliminar la categoría <strong>@Model.Nombre</strong>?</p>
+    <p class="subtle">La API rechazará la acción si hay equipos asociados.</p>
+    <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="form-actions">
+        @Html.AntiForgeryToken()
+        <button class="button button-danger" type="submit">Sí, eliminar</button>
+        <a class="button button-quiet" asp-action="Index">Cancelar</a>
+    </form>
+</section>

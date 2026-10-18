@@ -1,0 +1,40 @@
+@model PrestamoForm
+@{
+    ViewData["Title"] = "Nuevo préstamo";
+    var equipos = ViewBag.Equipos as List<EquipoDto> ?? [];
+    var usuarios = ViewBag.Usuarios as List<UsuarioDto> ?? [];
+}
+<div class="page-heading"><div><span class="eyebrow">Préstamos</span><h1>Nuevo préstamo</h1><p>Elige un equipo disponible y define cuándo debe devolverse.</p></div></div>
+<section class="form-card narrow-card">
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+        <div class="field"><label asp-for="EquipoId"></label>
+            <select asp-for="EquipoId">
+                <option value="0">Selecciona un equipo</option>
+                @foreach (var equipo in equipos)
+                {
+                    <option value="@equipo.Id">@equipo.Nombre · @equipo.CodigoInventario @(equipo.Estado == "Disponible" ? "" : "· ya no disponible")</option>
+                }
+            </select>
+            <span asp-validation-for="EquipoId" class="field-error"></span>
+        </div>
+        <div class="field"><label asp-for="UsuarioId"></label>
+            <select asp-for="UsuarioId">
+                <option value="0">Selecciona un usuario</option>
+                @foreach (var usuario in usuarios)
+                {
+                    <option value="@usuario.Id">@usuario.Username · @usuario.Rol</option>
+                }
+            </select>
+            <span asp-validation-for="UsuarioId" class="field-error"></span>
+        </div>
+        <div class="field"><label asp-for="FechaVencimiento"></label>
+            <input asp-for="FechaVencimiento" type="date" min="@DateTime.Today.ToString("yyyy-MM-dd")" max="@DateTime.Today.AddDays(7).ToString("yyyy-MM-dd")" />
+            <span class="field-hint">Entre hoy y siete días desde el préstamo.</span>
+            <span asp-validation-for="FechaVencimiento" class="field-error"></span>
+        </div>
+        <div class="field"><label asp-for="Observaciones"></label><textarea asp-for="Observaciones" rows="4" maxlength="500" placeholder="Condición de entrega u otros detalles"></textarea><span asp-validation-for="Observaciones" class="field-error"></span></div>
+        <div class="form-actions"><button class="button button-primary" type="submit">Registrar préstamo</button><a class="button button-quiet" asp-action="Index">Cancelar</a></div>
+    </form>
+</section>

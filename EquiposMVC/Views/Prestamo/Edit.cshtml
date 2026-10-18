@@ -1,0 +1,22 @@
+@model PrestamoDto
+@{
+    ViewData["Title"] = "Registrar devolución";
+}
+<div class="page-heading"><div><span class="eyebrow">Préstamos</span><h1>Registrar devolución</h1><p>Confirma que el equipo regresó al laboratorio.</p></div></div>
+<section class="form-card narrow-card">
+    <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+    <div class="detail-list"><div><span>Equipo</span><strong>@Model.EquipoNombre</strong></div><div><span>Código</span><strong>@Model.CodigoInventario</strong></div><div><span>Prestatario</span><strong>@Model.Username</strong></div><div><span>Fecha de préstamo</span><strong>@Model.FechaPrestamo.ToString("dd/MM/yyyy")</strong></div></div>
+    @if (Model.FechaDevolucion is null)
+    {
+        <form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="form-actions">
+            @Html.AntiForgeryToken()
+            <button class="button button-primary" type="submit">Confirmar devolución</button>
+            <a class="button button-quiet" asp-action="Index">Cancelar</a>
+        </form>
+    }
+    else
+    {
+        <p class="notice notice-success">Este préstamo ya fue devuelto.</p>
+        <a class="button button-quiet" asp-action="Index">Volver</a>
+    }
+</section>

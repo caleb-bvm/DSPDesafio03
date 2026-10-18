@@ -1,0 +1,34 @@
+@model List<CategoriaDto>
+@{
+    ViewData["Title"] = "Categorías";
+}
+<div class="page-heading">
+    <div><span class="eyebrow">Organización</span><h1>Categorías</h1><p>Organiza los equipos del inventario.</p></div>
+    <a class="button button-primary" asp-action="Create">Nueva categoría</a>
+</div>
+<section class="list-card">
+    @if (Model.Count == 0)
+    {
+        <div class="empty-state"><h2>Aún no hay categorías</h2><p>Crea la primera para clasificar los equipos.</p></div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table>
+                <thead><tr><th>Nombre</th><th class="actions-heading">Acciones</th></tr></thead>
+                <tbody>
+                @foreach (var categoria in Model)
+                {
+                    <tr>
+                        <td><strong>@categoria.Nombre</strong></td>
+                        <td class="table-actions">
+                            <a class="text-link" asp-action="Edit" asp-route-id="@categoria.Id">Editar</a>
+                            <a class="text-link danger-link" asp-action="Delete" asp-route-id="@categoria.Id">Eliminar</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

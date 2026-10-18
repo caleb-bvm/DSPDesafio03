@@ -1,0 +1,71 @@
+@using EquiposMVC.Services
+@model List<PrestamoDto>
+@{
+    var rol = Context.Session.GetString(SessionKeys.Rol);
+    var operador = rol is "Admin" or "Docente";
+    ViewData["Title"] = rol == "Estudiante" ? "Mis préstamos" : "Préstamos";
+    var soloVencidos = ViewBag.SoloVencidos == true;
+}
+<div class="page-heading">
+    <div><span class="eyebrow">Seguimiento</span><h1>@ViewData["Title"]</h1><p>@(rol == "Estudiante" ? "Revisa los equipos que has recibido." : "Consulta entregas, vencimientos y devoluciones.")</p></div>
+    @if (operador)
+    {
+        <a class="button button-primary" asp-action="Create">Nuevo préstamo</a>
+    }
+</div>
+<div class="filter-tabs" role="group" aria-label="Filtro de préstamos">
+    <a class="tab @(soloVencidos ? "" : "active")" asp-action="Index">Todos</a>
+    <a class="tab @(soloVencidos ? "active" : "")" asp-action="Index" asp-route-soloVencidos="true">Solo vencidos</a>
+</div>
+<section class="list-card">
+    @if (Model.Count == 0)
+    {
+        <div class="empty-state"><h2>No hay préstamos para mostrar</h2><p>@(soloVencidos ? "No hay préstamos vencidos en este momento." : "Aquí aparecerán los préstamos registrados.")</p></div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table>
+                <thead><tr><th>Equipo</th>@if (operador) { <th>Prestatario</th> }<th>Vencimiento</th><th>Estado</th>@if (operador) { <th class="actions-heading">Acción</th> }</tr></thead>
+                <tbody>
+                @foreach (var prestamo in Model)
+                {
+                    var vencido = prestamo.FechaDevolucion is null && prestamo.FechaVencimiento.Date < DateTime.Today;
+                    <tr>
+                        <td><div class="item-title">@prestamo.EquipoNombre</div><div class="item-subtitle">@prestamo.CodigoInventario · prestado @prestamo.FechaPrestamo.ToString("dd/MM/yyyy")</div></td>
+                        @if (operador) { <td>@prestamo.Username</td> }
+                        <td>@prestamo.FechaVencimiento.ToString("dd/MM/yyyy")</td>
+                        <td>
+                            @if (prestamo.FechaDevolucion is not null)
+                            {
+                                <span class="status status-devuelto">Devuelto</span>
+                            }
+                            else if (vencido)
+                            {
+                                <span class="status status-vencido">Vencido</span>
+                            }
+                            else
+                            {
+                                <span class="status status-activo">En préstamo</span>
+                            }
+                        </td>
+                        @if (operador)
+                        {
+                            <td class="table-actions">
+                                @if (prestamo.FechaDevolucion is null)
+                                {
+                                    <a class="text-link" asp-action="Edit" asp-route-id="@prestamo.Id">Registrar devolución</a>
+                                }
+                                else
+                                {
+                                    <span class="subtle">@prestamo.FechaDevolucion.Value.ToString("dd/MM/yyyy")</span>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

@@ -1,0 +1,13 @@
+@model CategoriaForm
+@{
+    ViewData["Title"] = "Nueva categoría";
+}
+<div class="page-heading"><div><span class="eyebrow">Categorías</span><h1>Nueva categoría</h1><p>Agrega un grupo para organizar el inventario.</p></div></div>
+<section class="form-card narrow-card">
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+        <div class="field"><label asp-for="Nombre"></label><input asp-for="Nombre" maxlength="100" autofocus /><span asp-validation-for="Nombre" class="field-error"></span></div>
+        <div class="form-actions"><button class="button button-primary" type="submit">Guardar categoría</button><a class="button button-quiet" asp-action="Index">Cancelar</a></div>
+    </form>
+</section>

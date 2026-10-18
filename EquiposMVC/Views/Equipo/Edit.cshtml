@@ -1,0 +1,13 @@
+@model EquipoForm
+@{
+    ViewData["Title"] = "Editar equipo";
+    var id = ViewContext.RouteData.Values["id"];
+}
+<div class="page-heading"><div><span class="eyebrow">Inventario</span><h1>Editar equipo</h1><p>Guarda los cambios cuando termines.</p></div></div>
+<section class="form-card narrow-card">
+    <form asp-action="Edit" asp-route-id="@id" method="post">
+        @Html.AntiForgeryToken()
+        <partial name="_Form" model="Model" />
+        <div class="form-actions"><button class="button button-primary" type="submit">Guardar cambios</button><a class="button button-quiet" asp-action="Index">Cancelar</a></div>
+    </form>
+</section>

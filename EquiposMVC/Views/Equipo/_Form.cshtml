@@ -1,0 +1,27 @@
+@model EquipoForm
+@{
+    var categorias = ViewBag.Categorias as List<CategoriaDto> ?? [];
+}
+<div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+<input asp-for="RowVersion" type="hidden" />
+<div class="field"><label asp-for="CodigoInventario"></label><input asp-for="CodigoInventario" maxlength="50" /><span asp-validation-for="CodigoInventario" class="field-error"></span></div>
+<div class="field"><label asp-for="Nombre"></label><input asp-for="Nombre" maxlength="150" /><span asp-validation-for="Nombre" class="field-error"></span></div>
+<div class="field"><label asp-for="CategoriaId"></label>
+    <select asp-for="CategoriaId">
+        <option value="0">Selecciona una categoría</option>
+        @foreach (var categoria in categorias)
+        {
+            <option value="@categoria.Id">@categoria.Nombre</option>
+        }
+    </select>
+    <span asp-validation-for="CategoriaId" class="field-error"></span>
+</div>
+<div class="field"><label asp-for="Estado"></label>
+    <select asp-for="Estado">
+        <option value="Disponible">Disponible</option>
+        <option value="Prestado">Prestado</option>
+        <option value="Mantenimiento">Mantenimiento</option>
+    </select>
+    <span asp-validation-for="Estado" class="field-error"></span>
+</div>
+<div class="field"><label asp-for="Descripcion"></label><textarea asp-for="Descripcion" rows="4" maxlength="500" placeholder="Detalles útiles para reconocer el equipo"></textarea><span asp-validation-for="Descripcion" class="field-error"></span></div>

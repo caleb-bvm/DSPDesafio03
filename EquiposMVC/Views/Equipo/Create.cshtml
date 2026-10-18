@@ -1,0 +1,12 @@
+@model EquipoForm
+@{
+    ViewData["Title"] = "Nuevo equipo";
+}
+<div class="page-heading"><div><span class="eyebrow">Inventario</span><h1>Nuevo equipo</h1><p>Completa los datos para incorporarlo al inventario.</p></div></div>
+<section class="form-card narrow-card">
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <partial name="_Form" model="Model" />
+        <div class="form-actions"><button class="button button-primary" type="submit">Guardar equipo</button><a class="button button-quiet" asp-action="Index">Cancelar</a></div>
+    </form>
+</section>

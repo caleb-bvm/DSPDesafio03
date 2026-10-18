@@ -1,0 +1,15 @@
+@model EquipoDto
+@{
+    ViewData["Title"] = "Eliminar equipo";
+}
+<div class="page-heading"><div><span class="eyebrow">Inventario</span><h1>Eliminar equipo</h1><p>Revisa el registro antes de confirmar.</p></div></div>
+<section class="form-card narrow-card">
+    <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+    <div class="detail-list"><div><span>Equipo</span><strong>@Model.Nombre</strong></div><div><span>Código</span><strong>@Model.CodigoInventario</strong></div><div><span>Estado</span><strong>@Model.Estado</strong></div></div>
+    <p class="subtle">Si tiene préstamos registrados, la API no permitirá eliminarlo.</p>
+    <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="form-actions">
+        @Html.AntiForgeryToken()
+        <button class="button button-danger" type="submit">Sí, eliminar</button>
+        <a class="button button-quiet" asp-action="Index">Cancelar</a>
+    </form>
+</section>

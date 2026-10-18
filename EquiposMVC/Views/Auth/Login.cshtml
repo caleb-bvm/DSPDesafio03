@@ -1,0 +1,32 @@
+@model LoginForm
+@{
+    ViewData["Title"] = "Iniciar sesión";
+}
+<section class="login-wrap">
+    <div class="login-intro">
+        <span class="eyebrow">Sistema de laboratorio</span>
+        <h1>Todo el equipo, en orden.</h1>
+        <p>Consulta la disponibilidad y lleva el control de cada préstamo desde un solo lugar.</p>
+        <div class="intro-shape" aria-hidden="true"><span></span><span></span><span></span></div>
+    </div>
+    <div class="form-card login-card">
+        <span class="eyebrow">Bienvenido</span>
+        <h2>Iniciar sesión</h2>
+        <p class="subtle">Ingresa con tu cuenta del laboratorio.</p>
+        <form asp-action="Login" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+            <div class="field">
+                <label asp-for="Username"></label>
+                <input asp-for="Username" autocomplete="username" autofocus />
+                <span asp-validation-for="Username" class="field-error"></span>
+            </div>
+            <div class="field">
+                <label asp-for="Password"></label>
+                <input asp-for="Password" autocomplete="current-password" />
+                <span asp-validation-for="Password" class="field-error"></span>
+            </div>
+            <button class="button button-primary button-wide" type="submit">Entrar</button>
+        </form>
+    </div>
+</section>

@@ -1,0 +1,41 @@
+@model RegistroForm
+@{
+    ViewData["Title"] = "Registrar usuario";
+}
+<div class="page-heading">
+    <div><span class="eyebrow">Administración</span><h1>Registrar usuario</h1><p>Crea una cuenta y asigna sus permisos.</p></div>
+</div>
+<section class="form-card narrow-card">
+    <form asp-action="Register" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+        <div class="field">
+            <label asp-for="Username"></label>
+            <input asp-for="Username" autocomplete="off" />
+            <span asp-validation-for="Username" class="field-error"></span>
+        </div>
+        <div class="field">
+            <label asp-for="Email"></label>
+            <input asp-for="Email" type="email" autocomplete="off" />
+            <span asp-validation-for="Email" class="field-error"></span>
+        </div>
+        <div class="field">
+            <label asp-for="Password"></label>
+            <input asp-for="Password" autocomplete="new-password" />
+            <span asp-validation-for="Password" class="field-error"></span>
+        </div>
+        <div class="field">
+            <label asp-for="Rol"></label>
+            <select asp-for="Rol">
+                <option value="Estudiante">Estudiante · consulta equipos y sus préstamos</option>
+                <option value="Docente">Docente · gestiona préstamos</option>
+                <option value="Admin">Admin · administra el sistema</option>
+            </select>
+            <span asp-validation-for="Rol" class="field-error"></span>
+        </div>
+        <div class="form-actions">
+            <button class="button button-primary" type="submit">Registrar usuario</button>
+            <a class="button button-quiet" asp-controller="Equipo" asp-action="Index">Cancelar</a>
+        </div>
+    </form>
+</section>
