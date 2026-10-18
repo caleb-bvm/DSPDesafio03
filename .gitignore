@@ -10,3 +10,8 @@
 TestResults/
 coverage/
 *.local.json
+/EquiposReportes/wwwroot/lib/
+/EquiposReportes/wwwroot/js/
+/EquiposReportes/wwwroot/favicon.ico
+/EquiposReportes/Views/Shared/_ValidationScriptsPartial.cshtml
+/EquiposReportes/Views/Shared/_Layout.cshtml.css

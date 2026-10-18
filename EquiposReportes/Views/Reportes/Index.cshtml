@@ -1,0 +1,38 @@
+@{
+    ViewData["Title"] = "Inicio";
+}
+
+<header class="page-title">
+    <p class="eyebrow">Panel de consulta</p>
+    <h1>Reportes del laboratorio</h1>
+    <p class="subtitle">Consulta el inventario y los préstamos de equipos. Elige un reporte para empezar.</p>
+</header>
+
+<div class="cards">
+    <a class="card" asp-action="Inventario">
+        <span class="card-icon" aria-hidden="true">01</span>
+        <h2>Inventario</h2>
+        <p>Altas por período, categoría y estado actual.</p>
+        <span class="card-action">Abrir reporte →</span>
+    </a>
+    <a class="card" asp-action="Vencidos">
+        <span class="card-icon" aria-hidden="true">02</span>
+        <h2>Préstamos vencidos</h2>
+        <p>Préstamos sin devolver y días de atraso.</p>
+        <span class="card-action">Abrir reporte →</span>
+    </a>
+    <a class="card" asp-action="Top">
+        <span class="card-icon" aria-hidden="true">03</span>
+        <h2>Más prestados</h2>
+        <p>Los cinco equipos con más préstamos.</p>
+        <span class="card-action">Abrir reporte →</span>
+    </a>
+    <a class="card" asp-action="Historial">
+        <span class="card-icon" aria-hidden="true">04</span>
+        <h2>Historial</h2>
+        <p>Préstamos de un usuario y sus devoluciones.</p>
+        <span class="card-action">Abrir reporte →</span>
+    </a>
+</div>
+
+<p class="note">Los datos se consultan directamente de EquiposDb con acceso de solo lectura.</p>

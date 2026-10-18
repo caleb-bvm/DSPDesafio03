@@ -1,0 +1,41 @@
+@model PaginaReporteViewModel<VencidoFilaViewModel>
+@{
+    ViewData["Title"] = "Préstamos vencidos";
+    ViewData["MostrarFechas"] = true;
+    ViewData["TipoFecha"] = "vencimiento";
+}
+
+<a class="back-link" asp-action="Index">← Volver a reportes</a>
+<header class="page-title">
+    <p class="eyebrow">Reporte 02</p>
+    <h1>Préstamos vencidos</h1>
+    <p class="subtitle">Préstamos con fecha de vencimiento anterior a hoy y sin devolución registrada.</p>
+</header>
+
+@await Html.PartialAsync("_FiltrosReporte", Model.Filtros)
+@if (Model.Error is not null) { <div class="alert">@Model.Error</div> }
+
+<section class="panel">
+    <div class="result-header"><h2>Resultados</h2><span class="result-count">@Model.Filas.Count préstamos</span></div>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Usuario</th><th>Equipo</th><th>Préstamo</th><th>Vencimiento</th><th class="number">Días de atraso</th></tr></thead>
+            <tbody>
+            @if (Model.Filas.Count == 0)
+            {
+                <tr><td colspan="5" class="empty">No hay préstamos vencidos para estos filtros.</td></tr>
+            }
+            @foreach (var fila in Model.Filas)
+            {
+                <tr>
+                    <td class="strong">@fila.Username</td>
+                    <td>@fila.Equipo <br /><small>@fila.CodigoInventario</small></td>
+                    <td>@fila.FechaPrestamo.ToString("dd/MM/yyyy")</td>
+                    <td>@fila.FechaVencimiento.ToString("dd/MM/yyyy")</td>
+                    <td class="number"><span class="chip chip-warn">@fila.DiasAtraso días</span></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</section>

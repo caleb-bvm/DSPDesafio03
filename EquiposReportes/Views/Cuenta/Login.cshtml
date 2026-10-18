@@ -1,0 +1,28 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Iniciar sesión";
+}
+
+<div class="login-shell">
+    <section class="panel login-card" aria-labelledby="login-title">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <p class="eyebrow">Acceso de administrador</p>
+        <h1 id="login-title">Iniciar sesión</h1>
+        <p class="subtitle">Usa la misma cuenta de la aplicación de préstamos para consultar los reportes.</p>
+
+        <form asp-action="Login" method="post">
+            <div asp-validation-summary="ModelOnly" class="alert"></div>
+            <div class="field">
+                <label asp-for="Username"></label>
+                <input asp-for="Username" autocomplete="username" autofocus />
+                <span asp-validation-for="Username" class="field-error"></span>
+            </div>
+            <div class="field">
+                <label asp-for="Password"></label>
+                <input asp-for="Password" autocomplete="current-password" />
+                <span asp-validation-for="Password" class="field-error"></span>
+            </div>
+            <button class="button" type="submit">Entrar a reportes</button>
+        </form>
+    </section>
+</div>

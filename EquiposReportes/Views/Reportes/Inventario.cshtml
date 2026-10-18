@@ -1,0 +1,41 @@
+@model PaginaReporteViewModel<InventarioFilaViewModel>
+@{
+    ViewData["Title"] = "Inventario";
+    ViewData["MostrarFechas"] = true;
+    ViewData["TipoFecha"] = "alta";
+}
+
+<a class="back-link" asp-action="Index">← Volver a reportes</a>
+<header class="page-title">
+    <p class="eyebrow">Reporte 01</p>
+    <h1>Inventario por categoría</h1>
+    <p class="subtitle">Equipos dados de alta en el período, agrupados por categoría y estado actual. Sin fechas, se muestra todo el inventario.</p>
+</header>
+
+@await Html.PartialAsync("_FiltrosReporte", Model.Filtros)
+@if (Model.Error is not null) { <div class="alert">@Model.Error</div> }
+
+<section class="panel">
+    <div class="result-header"><h2>Resultados</h2><span class="result-count">@Model.Filas.Count categorías</span></div>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Categoría</th><th class="number">Disponibles</th><th class="number">Prestados</th><th class="number">Mantenimiento</th><th class="number">Total</th></tr></thead>
+            <tbody>
+            @if (Model.Filas.Count == 0)
+            {
+                <tr><td colspan="5" class="empty">No hay categorías para mostrar.</td></tr>
+            }
+            @foreach (var fila in Model.Filas)
+            {
+                <tr>
+                    <td class="strong">@fila.Categoria</td>
+                    <td class="number">@fila.Disponibles</td>
+                    <td class="number">@fila.Prestados</td>
+                    <td class="number">@fila.EnMantenimiento</td>
+                    <td class="number strong">@fila.Total</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</section>

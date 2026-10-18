@@ -1,0 +1,48 @@
+@model FiltroReporteViewModel
+@{
+    var mostrarFechas = ViewData["MostrarFechas"] is true;
+    var mostrarUsuario = ViewData["MostrarUsuario"] is true;
+    var tipoFecha = ViewData["TipoFecha"]?.ToString() ?? "del préstamo";
+}
+
+<section class="panel filter-panel" aria-label="Filtros del reporte">
+    <form method="get" class="filter-grid">
+        @if (mostrarUsuario)
+        {
+            <div class="field">
+                <label for="username">Usuario</label>
+                <input id="username" type="search" name="username" value="@Model.Username" placeholder="Buscar por nombre" />
+            </div>
+        }
+        <div class="field">
+            <label for="categoriaId">Categoría</label>
+            <select id="categoriaId" name="categoriaId">
+                <option value="">Todas las categorías</option>
+                @foreach (var categoria in Model.Categorias)
+                {
+                    if (Model.CategoriaId == categoria.Id)
+                    {
+                        <option value="@categoria.Id" selected>@categoria.Nombre</option>
+                    }
+                    else
+                    {
+                        <option value="@categoria.Id">@categoria.Nombre</option>
+                    }
+                }
+            </select>
+        </div>
+        @if (mostrarFechas)
+        {
+            <div class="field">
+                <label for="desde">Desde (@tipoFecha)</label>
+                <input id="desde" type="date" name="desde" value="@(Model.Desde?.ToString("yyyy-MM-dd"))" />
+            </div>
+            <div class="field">
+                <label for="hasta">Hasta (@tipoFecha)</label>
+                <input id="hasta" type="date" name="hasta" value="@(Model.Hasta?.ToString("yyyy-MM-dd"))" />
+            </div>
+        }
+        <button class="button" type="submit">Aplicar filtros</button>
+        <a class="button button-secondary" href="@Context.Request.Path">Limpiar</a>
+    </form>
+</section>

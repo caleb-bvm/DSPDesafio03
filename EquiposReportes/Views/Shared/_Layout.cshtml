@@ -1,0 +1,36 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] · Reportes de laboratorio</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a class="brand" asp-controller="Reportes" asp-action="Index" aria-label="Ir al inicio de reportes">
+                <span class="brand-mark" aria-hidden="true"></span>
+                <span>Laboratorio <strong>· Reportes</strong></span>
+            </a>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <nav class="main-nav" aria-label="Reportes">
+                    <a asp-controller="Reportes" asp-action="Inventario">Inventario</a>
+                    <a asp-controller="Reportes" asp-action="Vencidos">Vencidos</a>
+                    <a asp-controller="Reportes" asp-action="Top">Más prestados</a>
+                    <a asp-controller="Reportes" asp-action="Historial">Historial</a>
+                </nav>
+                <div class="account">
+                    <span class="account-name">@User.Identity.Name</span>
+                    <form asp-controller="Cuenta" asp-action="Salir" method="post">
+                        <button class="text-button" type="submit">Salir</button>
+                    </form>
+                </div>
+            }
+        </div>
+    </header>
+    <main class="page" role="main">@RenderBody()</main>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

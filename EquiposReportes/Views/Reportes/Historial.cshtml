@@ -1,0 +1,52 @@
+@model PaginaReporteViewModel<HistorialFilaViewModel>
+@{
+    ViewData["Title"] = "Historial por usuario";
+    ViewData["MostrarFechas"] = true;
+    ViewData["MostrarUsuario"] = true;
+    ViewData["TipoFecha"] = "préstamo";
+}
+
+<a class="back-link" asp-action="Index">← Volver a reportes</a>
+<header class="page-title">
+    <p class="eyebrow">Reporte 04</p>
+    <h1>Historial por usuario</h1>
+    <p class="subtitle">Busca por nombre de usuario y revisa sus préstamos y devoluciones.</p>
+</header>
+
+@await Html.PartialAsync("_FiltrosReporte", Model.Filtros)
+@if (Model.Error is not null) { <div class="alert">@Model.Error</div> }
+
+<section class="panel">
+    <div class="result-header"><h2>Resultados</h2><span class="result-count">@Model.Filas.Count préstamos</span></div>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Usuario</th><th>Equipo</th><th>Categoría</th><th>Préstamo</th><th>Vencimiento</th><th>Devolución</th></tr></thead>
+            <tbody>
+            @if (Model.Filas.Count == 0)
+            {
+                <tr><td colspan="6" class="empty">No hay préstamos para estos filtros.</td></tr>
+            }
+            @foreach (var fila in Model.Filas)
+            {
+                <tr>
+                    <td class="strong">@fila.Username</td>
+                    <td>@fila.Equipo <br /><small>@fila.CodigoInventario</small></td>
+                    <td>@fila.Categoria</td>
+                    <td>@fila.FechaPrestamo.ToString("dd/MM/yyyy")</td>
+                    <td>@fila.FechaVencimiento.ToString("dd/MM/yyyy")</td>
+                    <td>
+                        @if (fila.FechaDevolucion.HasValue)
+                        {
+                            <span class="chip">@fila.FechaDevolucion.Value.ToString("dd/MM/yyyy")</span>
+                        }
+                        else
+                        {
+                            <span class="chip chip-warn">Pendiente</span>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</section>

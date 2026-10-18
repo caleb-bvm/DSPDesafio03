@@ -1,0 +1,40 @@
+@model PaginaReporteViewModel<TopEquipoFilaViewModel>
+@{
+    ViewData["Title"] = "Más prestados";
+    ViewData["MostrarFechas"] = true;
+    ViewData["TipoFecha"] = "préstamo";
+}
+
+<a class="back-link" asp-action="Index">← Volver a reportes</a>
+<header class="page-title">
+    <p class="eyebrow">Reporte 03</p>
+    <h1>Equipos más prestados</h1>
+    <p class="subtitle">Los cinco equipos con más préstamos registrados en el período elegido.</p>
+</header>
+
+@await Html.PartialAsync("_FiltrosReporte", Model.Filtros)
+@if (Model.Error is not null) { <div class="alert">@Model.Error</div> }
+
+<section class="panel">
+    <div class="result-header"><h2>Resultados</h2><span class="result-count">@Model.Filas.Count equipos</span></div>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Equipo</th><th>Código</th><th>Categoría</th><th class="number">Préstamos</th></tr></thead>
+            <tbody>
+            @if (Model.Filas.Count == 0)
+            {
+                <tr><td colspan="4" class="empty">No hay préstamos para estos filtros.</td></tr>
+            }
+            @foreach (var fila in Model.Filas)
+            {
+                <tr>
+                    <td class="strong">@fila.Equipo</td>
+                    <td>@fila.CodigoInventario</td>
+                    <td>@fila.Categoria</td>
+                    <td class="number strong">@fila.CantidadPrestamos</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</section>
