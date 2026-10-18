@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="EquiposAPI/EquiposAPI.csproj" />
+  <Project Path="EquiposMVC/EquiposMVC.csproj" />
+  <Project Path="EquiposReportes/EquiposReportes.csproj" />
+</Solution>
