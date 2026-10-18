@@ -28,11 +28,13 @@ nombre de usuario y rol. El registro de usuarios es exclusivo de Admin.
 
 `estado` es `Disponible`, `Prestado` o `Mantenimiento`. `rowVersion` es una
 cadena Base64. El cliente debe devolver la versión que obtuvo al abrir Edit.
+La API asigna `fechaRegistro` al crear el equipo, con hora de Guatemala; los
+formularios no la envían ni pueden modificarla.
 
 | Método y ruta | Entrada | Salida |
 | --- | --- | --- |
 | `GET /api/equipos?texto=&categoriaId=&estado=&page=1&pageSize=10` | Filtros combinables | `{ items, page, pageSize, totalCount, totalPages }` |
-| `GET /api/equipos/{id}` | — | `{ id, codigoInventario, nombre, descripcion, categoriaId, categoriaNombre, estado, rowVersion }` |
+| `GET /api/equipos/{id}` | — | `{ id, codigoInventario, nombre, descripcion, categoriaId, categoriaNombre, estado, fechaRegistro, rowVersion }` |
 | `POST /api/equipos` | `{ codigoInventario, nombre, descripcion, categoriaId, estado }` | Equipo creado |
 | `PUT /api/equipos/{id}` | `{ codigoInventario, nombre, descripcion, categoriaId, estado, rowVersion }` | Equipo actualizado |
 | `DELETE /api/equipos/{id}` | — | 204 |

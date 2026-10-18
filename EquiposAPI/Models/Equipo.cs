@@ -9,6 +9,7 @@ public class Equipo
     public int CategoriaId { get; set; }
     public Categoria Categoria { get; set; } = null!;
     public string Estado { get; set; } = EstadoEquipo.Disponible;
+    public DateTime FechaRegistro { get; set; }
     public byte[] RowVersion { get; set; } = [];
     public List<Prestamo> Prestamos { get; set; } = [];
 }

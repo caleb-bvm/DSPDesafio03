@@ -35,6 +35,7 @@ public class EquipoListaDto
     public int CategoriaId { get; set; }
     public string CategoriaNombre { get; set; } = string.Empty;
     public string Estado { get; set; } = string.Empty;
+    public DateTime FechaRegistro { get; set; }
     public string RowVersion { get; set; } = string.Empty;
 }
 

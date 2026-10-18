@@ -2,6 +2,7 @@ using AutoMapper;
 using EquiposAPI.Data;
 using EquiposAPI.Dtos;
 using EquiposAPI.Models;
+using EquiposAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -93,6 +94,7 @@ public class EquiposController(EquiposDbContext db, IMapper mapper) : Controller
         equipo.CodigoInventario = codigo;
         equipo.Nombre = nombre;
         equipo.Estado = estado;
+        equipo.FechaRegistro = RelojLocal.Ahora();
         equipo.Categoria = categoria;
         equipo.Descripcion = datos.Descripcion?.Trim();
         db.Equipos.Add(equipo);

@@ -33,6 +33,8 @@ public class EquiposDbContext(DbContextOptions<EquiposDbContext> options) : DbCo
             equipo.Property(x => x.Nombre).HasMaxLength(150).IsRequired();
             equipo.Property(x => x.Descripcion).HasMaxLength(500);
             equipo.Property(x => x.Estado).HasMaxLength(20).IsRequired();
+            equipo.Property(x => x.FechaRegistro).HasDefaultValueSql(
+                "CONVERT(datetime2, (SYSUTCDATETIME() AT TIME ZONE 'UTC') AT TIME ZONE 'Central America Standard Time')");
             equipo.Property(x => x.RowVersion).IsRowVersion();
             equipo.HasIndex(x => x.CodigoInventario).IsUnique();
             equipo.HasOne(x => x.Categoria).WithMany(x => x.Equipos)

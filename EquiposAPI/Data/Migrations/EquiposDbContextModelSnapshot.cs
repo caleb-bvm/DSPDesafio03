@@ -90,6 +90,11 @@ namespace EquiposAPI.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<DateTime>("FechaRegistro")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("CONVERT(datetime2, (SYSUTCDATETIME() AT TIME ZONE 'UTC') AT TIME ZONE 'Central America Standard Time')");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(150)
