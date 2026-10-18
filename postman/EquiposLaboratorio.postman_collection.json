@@ -1,0 +1,866 @@
+{
+  "info": {
+    "name": "Equipos de Laboratorio · casos de defensa",
+    "description": "Ejecutar en orden. Completar adminPassword y studentPassword como variables locales en Postman antes de iniciar. Los casos 11 y 12 se verifican manualmente en MVC y Reportes. No guardar contraseñas reales en el archivo exportado.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "API · ejecución ordenada",
+      "item": [
+        {
+          "name": "01 · Login Admin (caso 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{adminUsername}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.collectionVariables.set(\"adminToken\", r.token);",
+                  "pm.test(\"Token y rol Admin\", () => {",
+                  "  pm.expect(r.rol).to.eql(\"Admin\");",
+                  "  const payload = JSON.parse(atob(r.token.split(\".\")[1].replace(/-/g, \"+\").replace(/_/g, \"/\")));",
+                  "  pm.expect(Object.values(payload)).to.include(\"Admin\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 · Contraseña incorrecta (caso 2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{adminUsername}}\",\n  \"password\": \"{{adminPassword}}incorrecta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 · Sin token (caso 3)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/categorias",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 · Obtener categoría semilla",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/categorias",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const categorias = pm.response.json();",
+                  "pm.test(\"Hay categorías\", () => pm.expect(categorias.length).to.be.above(0));",
+                  "pm.collectionVariables.set(\"categoriaId\", categorias[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 · Registrar Estudiante",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{studentUsername}}\",\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\",\n  \"rol\": \"Estudiante\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Usuario creado\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "pm.collectionVariables.set(\"studentId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 · Login Estudiante",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{studentUsername}}\",\n  \"password\": \"{{studentPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"studentToken\", pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 · Estudiante no puede crear equipo (caso 4)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/equipos",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigoInventario\": \"LAB-SIN-PERMISO\",\n  \"nombre\": \"No autorizado\",\n  \"descripcion\": \"Prueba de roles\",\n  \"categoriaId\": {{categoriaId}},\n  \"estado\": \"Disponible\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 · Username duplicado (caso 5)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{studentUsername}}\",\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\",\n  \"rol\": \"Estudiante\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 · Crear equipo para préstamo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/equipos",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigoInventario\": \"{{codigoPrestamo}}\",\n  \"nombre\": \"Laptop de prueba\",\n  \"descripcion\": \"Caso de préstamo\",\n  \"categoriaId\": {{categoriaId}},\n  \"estado\": \"Disponible\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"codigoPrestamo\", \"LAB-P-\" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Equipo creado\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "pm.collectionVariables.set(\"equipoPrestamoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 · Vencimiento a 15 días (caso 7)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/prestamos",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"equipoId\": {{equipoPrestamoId}},\n  \"usuarioId\": {{studentId}},\n  \"fechaVencimiento\": \"{{vencimiento15}}\",\n  \"observaciones\": \"Debe fallar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date();",
+                  "d.setDate(d.getDate() + 15);",
+                  "pm.collectionVariables.set(\"vencimiento15\", d.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 · Registrar préstamo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/prestamos",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"equipoId\": {{equipoPrestamoId}},\n  \"usuarioId\": {{studentId}},\n  \"fechaVencimiento\": \"{{vencimiento3}}\",\n  \"observaciones\": \"Prueba Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date();",
+                  "d.setDate(d.getDate() + 3);",
+                  "pm.collectionVariables.set(\"vencimiento3\", d.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Préstamo creado\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "pm.collectionVariables.set(\"prestamoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 · Equipo ya prestado (caso 6)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/prestamos",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"equipoId\": {{equipoPrestamoId}},\n  \"usuarioId\": {{studentId}},\n  \"fechaVencimiento\": \"{{vencimiento3}}\",\n  \"observaciones\": \"Debe fallar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13 · Equipo con historial no se elimina (caso 8)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/equipos/{{equipoPrestamoId}}",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14 · Crear equipo para concurrencia",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/equipos",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigoInventario\": \"{{codigoConcurrencia}}\",\n  \"nombre\": \"Proyector de prueba\",\n  \"descripcion\": \"Concurrencia\",\n  \"categoriaId\": {{categoriaId}},\n  \"estado\": \"Disponible\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"codigoConcurrencia\", \"LAB-C-\" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Equipo creado\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "pm.collectionVariables.set(\"equipoConcurrenciaId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15 · Leer versión inicial",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/equipos/{{equipoConcurrenciaId}}",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"rowVersionAnterior\", pm.response.json().rowVersion);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16 · Primera edición",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/equipos/{{equipoConcurrenciaId}}",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigoInventario\": \"{{codigoConcurrencia}}\",\n  \"nombre\": \"Proyector actualizado\",\n  \"descripcion\": \"Primer cambio\",\n  \"categoriaId\": {{categoriaId}},\n  \"estado\": \"Disponible\",\n  \"rowVersion\": \"{{rowVersionAnterior}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Primera edición aceptada\", () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17 · Segunda edición con versión antigua (caso 9)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/equipos/{{equipoConcurrenciaId}}",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigoInventario\": \"{{codigoConcurrencia}}\",\n  \"nombre\": \"Cambio tardío\",\n  \"descripcion\": \"Segunda edición\",\n  \"categoriaId\": {{categoriaId}},\n  \"estado\": \"Disponible\",\n  \"rowVersion\": \"{{rowVersionAnterior}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18 · Estudiante ve solo sus préstamos (caso 10)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/prestamos?usuarioId=1",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const prestamos = pm.response.json();",
+                  "pm.test(\"Solo préstamos propios\", () => {",
+                  "  pm.expect(prestamos).to.be.an(\"array\");",
+                  "  prestamos.forEach(p => pm.expect(String(p.usuarioId)).to.eql(String(pm.collectionVariables.get(\"studentId\"))));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Verificación manual",
+      "description": "Caso 11: iniciar sesión en EquiposMVC, dejar vencer el token y comprobar que la siguiente operación limpia Session y redirige al login. Caso 12: abrir los cuatro reportes como Admin, aplicar filtros y comparar los conteos y filas con consultas en SSMS.",
+      "item": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5101"
+    },
+    {
+      "key": "adminUsername",
+      "value": "admin"
+    },
+    {
+      "key": "adminPassword",
+      "value": ""
+    },
+    {
+      "key": "studentUsername",
+      "value": "estudiante_prueba"
+    },
+    {
+      "key": "studentEmail",
+      "value": "estudiante_prueba@ejemplo.local"
+    },
+    {
+      "key": "studentPassword",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "studentToken",
+      "value": ""
+    },
+    {
+      "key": "studentId",
+      "value": ""
+    },
+    {
+      "key": "categoriaId",
+      "value": ""
+    },
+    {
+      "key": "codigoPrestamo",
+      "value": ""
+    },
+    {
+      "key": "equipoPrestamoId",
+      "value": ""
+    },
+    {
+      "key": "prestamoId",
+      "value": ""
+    },
+    {
+      "key": "vencimiento3",
+      "value": ""
+    },
+    {
+      "key": "vencimiento15",
+      "value": ""
+    },
+    {
+      "key": "codigoConcurrencia",
+      "value": ""
+    },
+    {
+      "key": "equipoConcurrenciaId",
+      "value": ""
+    },
+    {
+      "key": "rowVersionAnterior",
+      "value": ""
+    }
+  ]
+}

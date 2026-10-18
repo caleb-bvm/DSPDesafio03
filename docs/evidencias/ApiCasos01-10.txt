@@ -1,0 +1,20 @@
+Ejecución local de scripts/VerificarApi.ps1, 17/10/2026 (hora de Guatemala)
+
+01 Login Admin : 200 (esperado 200) - OK
+02 Contraseña incorrecta : 401 (esperado 401) - OK
+03 Sin token : 401 (esperado 401) - OK
+Preparación: registrar estudiante : 201 (esperado 201) - OK
+Preparación: login estudiante : 200 (esperado 200) - OK
+04 Estudiante crea equipo : 403 (esperado 403) - OK
+05 Username repetido : 409 (esperado 409) - OK
+Preparación: equipo para préstamo : 201 (esperado 201) - OK
+07 Vencimiento a 15 días : 400 (esperado 400) - OK
+Preparación: préstamo válido : 201 (esperado 201) - OK
+06 Equipo ya prestado : 409 (esperado 409) - OK
+08 Borrar equipo con historial : 409 (esperado 409) - OK
+Preparación: equipo para concurrencia : 201 (esperado 201) - OK
+Preparación: primera edición : 200 (esperado 200) - OK
+09 Segunda edición simultánea : 409 (esperado 409) - OK
+10 Listado de estudiante : 200 (esperado 200) - OK
+10 Estudiante solo ve préstamos propios - OK
+Casos API 1–10 verificados. Casos 11 y 12: verificar en MVC y Reportes.

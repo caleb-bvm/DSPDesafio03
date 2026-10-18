@@ -1,0 +1,29 @@
+﻿Changed database context to 'EquiposDb'.
+Categoria Disponibles Prestados EnMantenimiento
+--------- ----------- --------- ---------------
+Kits de IoT 3 2 0
+Laptops 0 0 0
+Proyectores 0 0 1
+Tarjetas Arduino 0 0 0
+
+(4 rows affected)
+Username CodigoInventario Equipo FechaPrestamo FechaVencimiento DiasAtraso
+-------- ---------------- ------ ------------- ---------------- ----------
+
+(0 rows affected)
+CodigoInventario Equipo Categoria CantidadPrestamos
+---------------- ------ --------- -----------------
+DEMO-64B714BA Kit de demostración actualizado Kits de IoT 3
+LAB-P-9dd89a1b Laptop de prueba Kits de IoT 1
+LAB-P-d8cf0bdc Laptop de prueba Kits de IoT 1
+
+(3 rows affected)
+Username CodigoInventario Equipo Categoria FechaPrestamo FechaVencimiento FechaDevolucion
+-------- ---------------- ------ --------- ------------- ---------------- ---------------
+estudiante_d8cf0bdc LAB-P-d8cf0bdc Laptop de prueba Kits de IoT 2026-10-17 21:23:03.2148093 2026-10-20 00:00:00.0000000 NULL
+admin DEMO-64B714BA Kit de demostración actualizado Kits de IoT 2026-10-17 21:17:42.0665741 2026-10-17 00:00:00.0000000 2026-10-17 21:17:42.2349624
+estudiante_9dd89a1b LAB-P-9dd89a1b Laptop de prueba Kits de IoT 2026-10-17 21:12:10.1748228 2026-10-20 00:00:00.0000000 NULL
+estudiante_67bf7bc1 DEMO-64B714BA Kit de demostración actualizado Kits de IoT 2026-10-17 21:09:36.9330516 2026-10-19 00:00:00.0000000 2026-10-17 21:09:36.9592679
+admin DEMO-64B714BA Kit de demostración actualizado Kits de IoT 2026-10-17 21:09:13.1231899 2026-10-20 00:00:00.0000000 2026-10-17 21:09:13.2374374
+
+(5 rows affected)
