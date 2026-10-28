@@ -1,0 +1,78 @@
+# Levanta todo el sistema con un solo comando:  .\iniciar.ps1
+# (o "docker compose up -d --build" si ya existe el archivo .env).
+#
+# Las contraseñas y la clave JWT se leen del archivo .env, que genera
+# iniciar.ps1 y que NO se sube a Git.
+
+services:
+  # SQL Server en Linux. Siempre acepta usuarios SQL (modo mixto),
+  # así que no hay que cambiar nada en la instancia local.
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD}
+    ports:
+      - "14330:1433"   # Para conectarse desde SSMS: localhost,14330 con el usuario sa.
+    volumes:
+      - datos-sql:/var/opt/mssql   # Los datos se conservan al reiniciar.
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -b -Q "SELECT 1"
+      interval: 5s
+      retries: 30
+
+  # API: al arrancar aplica las migraciones y crea el Admin si no hay usuarios.
+  api:
+    build: { context: ., dockerfile: docker/Dockerfile, args: { PROYECTO: EquiposAPI } }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development   # Activa Swagger.
+      TZ: ${TZ}
+      ConnectionStrings__EquiposDb: Server=db;Database=EquiposDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True
+      Jwt__Key: ${JWT_KEY}
+      SeedAdmin__Password: ${ADMIN_PASSWORD}
+    ports:
+      - "5101:8080"
+    depends_on:
+      db: { condition: service_healthy }
+
+  # Tarea de una sola vez: crea el login "reportes" y luego se detiene.
+  db-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    entrypoint: ["bash", "/scripts/crear-usuario-reportes.sh"]
+    environment:
+      SA_PASSWORD: ${SA_PASSWORD}
+      REPORTES_PASSWORD: ${REPORTES_PASSWORD}
+    volumes:
+      - ./docker/crear-usuario-reportes.sh:/scripts/crear-usuario-reportes.sh:ro
+      - ./EquiposReportes/sql/crear_usuario_reportes.sql:/scripts/crear_usuario_reportes.sql:ro
+    depends_on:
+      api: { condition: service_started }
+
+  # Cliente MVC. Habla con la API por la red interna de Docker (http://api:8080).
+  mvc:
+    build: { context: ., dockerfile: docker/Dockerfile, args: { PROYECTO: EquiposMVC } }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      TZ: ${TZ}
+      Api__BaseUrl: http://api:8080/
+      Reportes__BaseUrl: http://localhost:5103/   # Enlace que abre el navegador.
+    ports:
+      - "5102:8080"
+    depends_on:
+      api: { condition: service_started }
+
+  # Reportes: lee la base con el usuario "reportes" (solo lectura).
+  reportes:
+    build: { context: ., dockerfile: docker/Dockerfile, args: { PROYECTO: EquiposReportes } }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      TZ: ${TZ}
+      Api__BaseUrl: http://api:8080/
+      ConnectionStrings__EquiposReportes: Server=db;Database=EquiposDb;User Id=reportes;Password=${REPORTES_PASSWORD};TrustServerCertificate=True
+    ports:
+      - "5103:8080"
+    depends_on:
+      db-init: { condition: service_completed_successfully }
+
+volumes:
+  datos-sql:

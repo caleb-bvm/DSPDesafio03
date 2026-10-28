@@ -12,7 +12,43 @@ El cliente de operación nunca accede directamente a SQL Server. Reportes lee
 con el usuario SQL `reportes`, limitado a `db_datareader`. Toda escritura de la
 aplicación pasa por la API.
 
-## Requisitos
+## Arranque rápido con Docker (recomendado)
+
+Solo necesita **Docker Desktop** abierto. Desde la carpeta de la solución:
+
+```powershell
+.\iniciar.ps1
+```
+
+El script hace todo:
+
+1. La primera vez crea el archivo `.env` con contraseñas aleatorias para `sa`,
+   `reportes` y `admin`, y con la clave JWT. Ese archivo no se sube a Git.
+2. Levanta SQL Server, la API, el MVC y Reportes en contenedores.
+3. La API crea la base y el usuario `admin`. Luego el servicio `db-init`
+   crea el login de solo lectura `reportes`.
+4. Muestra las URL y la contraseña de `admin`.
+
+| Qué | Dónde |
+| --- | --- |
+| MVC | `http://localhost:5102` |
+| Reportes | `http://localhost:5103` |
+| Swagger | `http://localhost:5101/swagger` |
+| SSMS | Servidor `localhost,14330`, autenticación SQL Server, usuario `sa` (la contraseña está en `.env`) |
+
+Comandos útiles:
+
+```powershell
+docker compose stop        # Detiene todo y conserva los datos.
+docker compose down -v     # Borra todo, incluida la base, para empezar de cero.
+docker compose logs api    # Muestra los mensajes de la API.
+```
+
+Con Docker no hace falta instalar SQL Server, cambiar el modo de autenticación
+ni configurar User Secrets. Las secciones siguientes describen el arranque sin
+Docker.
+
+## Requisitos (sin Docker)
 
 - SDK de .NET 10.
 - SQL Server Express (`.\SQLEXPRESS`) y SSMS para revisar el esquema.
@@ -22,13 +58,7 @@ aplicación pasa por la API.
 Los tres proyectos deben usar la misma versión de .NET. En otro equipo, cambie
 el nombre de la instancia SQL en las cadenas de conexión locales.
 
-## Configuración inicial
-
-**Estado de este equipo:** la API y EquiposMVC ya están configurados para las
-pruebas locales. SQL Server sigue en modo de autenticación solo Windows. Falta
-activar el modo mixto, crear `reportes` y configurar su secreto de conexión;
-hasta entonces EquiposReportes no podrá arrancar. La conexión temporal de
-desarrollo se retiró.
+## Configuración inicial (sin Docker)
 
 1. Configure SQL Server en modo de autenticación **SQL Server y Windows** y
    reinicie la instancia. Es necesario para el login SQL `reportes`. La API
@@ -77,7 +107,7 @@ Las URL de la API se encuentran en `appsettings.json` de los clientes porque no
 son secretos. La cadena de conexión, la clave JWT y las contraseñas no se
 guardan en archivos versionados.
 
-## Arranque
+## Arranque (sin Docker)
 
 Abra tres terminales en la carpeta de esta solución, en este orden:
 

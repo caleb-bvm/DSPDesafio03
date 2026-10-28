@@ -15,3 +15,6 @@ coverage/
 /EquiposReportes/wwwroot/favicon.ico
 /EquiposReportes/Views/Shared/_ValidationScriptsPartial.cshtml
 /EquiposReportes/Views/Shared/_Layout.cshtml.css
+
+# Secretos de Docker (los genera iniciar.ps1)
+.env
