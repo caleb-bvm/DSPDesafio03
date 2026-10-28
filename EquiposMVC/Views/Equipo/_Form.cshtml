@@ -22,7 +22,11 @@
 <div class="field"><label asp-for="Estado"></label>
     <select asp-for="Estado">
         <option value="Disponible">Disponible</option>
-        <option value="Prestado">Prestado</option>
+        @* Prestado solo aparece si el equipo ya lo está: ese estado lo pone el registro de un préstamo. *@
+        @if (Model.Estado == "Prestado")
+        {
+            <option value="Prestado">Prestado</option>
+        }
         <option value="Mantenimiento">Mantenimiento</option>
     </select>
     <span asp-validation-for="Estado" class="field-error"></span>

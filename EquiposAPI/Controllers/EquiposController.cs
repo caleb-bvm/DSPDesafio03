@@ -78,6 +78,10 @@ public class EquiposController(EquiposDbContext db, IMapper mapper) : Controller
         if (await db.Equipos.AnyAsync(e => e.CodigoInventario == datos.CodigoInventario))
             return Conflict(new { message = "Ya existe un equipo con ese código de inventario." });
 
+        // Un equipo nuevo no tiene préstamos: solo pasa a Prestado al registrar uno.
+        if (datos.Estado == EstadoEquipo.Prestado)
+            return BadRequest(new { message = "Un equipo nuevo no puede estar Prestado; registre un préstamo." });
+
         var equipo = mapper.Map<Equipo>(datos);
         equipo.Categoria = categoria;
         equipo.FechaRegistro = DateTime.Now;
@@ -109,6 +113,10 @@ public class EquiposController(EquiposDbContext db, IMapper mapper) : Controller
         var tienePrestamoActivo = await db.Prestamos.AnyAsync(p => p.EquipoId == id && p.FechaDevolucion == null);
         if (tienePrestamoActivo && datos.Estado != EstadoEquipo.Prestado)
             return Conflict(new { message = "El equipo tiene un préstamo activo; registre primero la devolución." });
+        // Y al revés: sin préstamo activo no se puede marcar como Prestado,
+        // porque quedaría un equipo que nadie puede devolver.
+        if (!tienePrestamoActivo && datos.Estado == EstadoEquipo.Prestado)
+            return BadRequest(new { message = "Para marcar el equipo como Prestado, registre un préstamo." });
 
         // CONCURRENCIA: le decimos a EF que la versión "original" es la que el
         // cliente leyó. EF genera: UPDATE ... WHERE Id = @id AND RowVersion = @versionLeida

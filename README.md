@@ -75,7 +75,7 @@ el nombre de la instancia SQL en las cadenas de conexión locales.
 3. Instale `dotnet-ef` si no está disponible y aplique las migraciones:
 
    ```powershell
-   dotnet tool install --global dotnet-ef --version 10.0.11
+   dotnet tool install --global dotnet-ef --version 10.0.13
    dotnet ef database update --project EquiposAPI
    ```
 
@@ -122,8 +122,8 @@ Admin puede abrir Reportes desde el menú; Reportes pide iniciar sesión de nuev
 contra la API. Swagger de la API está disponible en
 `http://localhost:5101/swagger` cuando el entorno es Development.
 
-En este equipo ya se generó la contraseña inicial del Admin en User Secrets.
-Para consultarla localmente sin incluirla en Git:
+La contraseña inicial del Admin es la que se configuró en el paso 2 de la
+configuración inicial. Para consultarla localmente sin incluirla en Git:
 
 ```powershell
 dotnet user-secrets list --project EquiposAPI | Select-String 'SeedAdmin:Password'

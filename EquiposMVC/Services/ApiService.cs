@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 
 namespace EquiposMVC.Services;
 
@@ -47,16 +48,28 @@ public abstract class ApiService(HttpClient client)
             // Error: se guarda el código. En 400 y 409 la API manda { "message": "..." }.
             var resultado = new ApiResult<T> { Status = respuesta.StatusCode };
             if (resultado.EsErrorDeFormulario)
-            {
-                var error = await respuesta.Content.ReadFromJsonAsync<ErrorApi>();
-                resultado.Message = error?.Message ?? "Revisa los datos enviados.";
-            }
+                resultado.Message = await LeerMensaje(respuesta) ?? "Revisa los datos enviados.";
             return resultado;
         }
-        catch (HttpRequestException)
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException)
         {
-            // La API está apagada o no se pudo conectar: se trata como un 503.
+            // La API está apagada, tardó demasiado o respondió algo que no es JSON:
+            // se trata como un 503 y el usuario ve el mensaje genérico.
             return new ApiResult<T> { Status = HttpStatusCode.ServiceUnavailable };
+        }
+    }
+
+    // Lee el { "message": "..." } de un 400 o 409. Si el cuerpo no es JSON, devuelve null.
+    private static async Task<string?> LeerMensaje(HttpResponseMessage respuesta)
+    {
+        try
+        {
+            var error = await respuesta.Content.ReadFromJsonAsync<ErrorApi>();
+            return error?.Message;
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 

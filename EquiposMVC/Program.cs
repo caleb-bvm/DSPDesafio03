@@ -30,9 +30,9 @@ builder.Services.AddHttpClient<PrestamoService>(c => c.BaseAddress = apiUrl).Add
 
 var app = builder.Build();
 
-// Fuera de Development, un error inesperado muestra una página genérica.
-if (!app.Environment.IsDevelopment())
-    app.UseExceptionHandler("/Home/Error");
+// Un error inesperado muestra una página genérica, también en Development:
+// el usuario nunca ve detalles internos (pila de llamadas, mensajes de .NET).
+app.UseExceptionHandler("/Home/Error");
 
 app.UseStaticFiles();
 app.UseRouting();

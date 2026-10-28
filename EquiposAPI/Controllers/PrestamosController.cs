@@ -5,6 +5,7 @@ using EquiposAPI.Dtos;
 using EquiposAPI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace EquiposAPI.Controllers;
@@ -84,6 +85,11 @@ public class PrestamosController(EquiposDbContext db, IMapper mapper) : Controll
             // Otro usuario prestó o editó el mismo equipo al mismo tiempo (RowVersion distinta).
             return Conflict(new { message = "El equipo acaba de cambiar. Vuelva a consultar su disponibilidad." });
         }
+        catch (DbUpdateException e) when (e.InnerException is SqlException { Number: 2601 or 2627 })
+        {
+            // El índice único filtrado rechazó un segundo préstamo activo del mismo equipo.
+            return Conflict(new { message = "El equipo ya tiene un préstamo activo." });
+        }
 
         return StatusCode(StatusCodes.Status201Created, mapper.Map<PrestamoListaDto>(prestamo));
     }
@@ -105,7 +111,16 @@ public class PrestamosController(EquiposDbContext db, IMapper mapper) : Controll
         // Se registra la devolución y el equipo vuelve a estar Disponible.
         prestamo.FechaDevolucion = DateTime.Now;
         prestamo.Equipo.Estado = EstadoEquipo.Disponible;
-        await db.SaveChangesAsync();
+
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Otro usuario editó el equipo mientras se registraba la devolución.
+            return Conflict(new { message = "El equipo acaba de cambiar. Intente registrar la devolución de nuevo." });
+        }
 
         return Ok(mapper.Map<PrestamoListaDto>(prestamo));
     }
