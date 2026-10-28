@@ -5,74 +5,59 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EquiposReportes.Controllers;
 
+// Solo el rol Admin puede ver los reportes (el rol viene de la cookie creada en CuentaController).
 [Authorize(Roles = "Admin")]
 public class ReportesController(ReportesService reportes) : Controller
 {
+    // GET /Reportes  (menú con los cuatro reportes)
     public IActionResult Index() => View();
 
-    public async Task<IActionResult> Inventario(DateOnly? desde, DateOnly? hasta, int? categoriaId)
+    // GET /Reportes/Inventario?desde=&hasta=&categoriaId=
+    public async Task<IActionResult> Inventario(FiltrosViewModel filtros)
     {
-        var modelo = new PaginaReporteViewModel<InventarioFilaViewModel>
-        {
-            Filtros = await CrearFiltrosAsync(categoriaId, desde, hasta, null)
-        };
-        if (FechasValidas(desde, hasta, modelo))
-            modelo.Filas = await reportes.InventarioAsync(desde, hasta, categoriaId);
+        var modelo = await CrearModelo<InventarioFilaViewModel>(filtros);
+        if (modelo.Error is null)
+            modelo.Filas = await reportes.InventarioAsync(filtros);
         return View(modelo);
     }
 
-    public async Task<IActionResult> Vencidos(DateOnly? desde, DateOnly? hasta, int? categoriaId)
+    // GET /Reportes/Vencidos?desde=&hasta=&categoriaId=
+    public async Task<IActionResult> Vencidos(FiltrosViewModel filtros)
     {
-        var modelo = new PaginaReporteViewModel<VencidoFilaViewModel>
-        {
-            Filtros = await CrearFiltrosAsync(categoriaId, desde, hasta, null)
-        };
-        if (FechasValidas(desde, hasta, modelo))
-            modelo.Filas = await reportes.VencidosAsync(desde, hasta, categoriaId);
+        var modelo = await CrearModelo<VencidoFilaViewModel>(filtros);
+        if (modelo.Error is null)
+            modelo.Filas = await reportes.VencidosAsync(filtros);
         return View(modelo);
     }
 
-    public async Task<IActionResult> Top(DateOnly? desde, DateOnly? hasta, int? categoriaId)
+    // GET /Reportes/Top?desde=&hasta=&categoriaId=
+    public async Task<IActionResult> Top(FiltrosViewModel filtros)
     {
-        var modelo = new PaginaReporteViewModel<TopEquipoFilaViewModel>
-        {
-            Filtros = await CrearFiltrosAsync(categoriaId, desde, hasta, null)
-        };
-        if (FechasValidas(desde, hasta, modelo))
-            modelo.Filas = await reportes.TopEquiposAsync(desde, hasta, categoriaId);
+        var modelo = await CrearModelo<TopEquipoFilaViewModel>(filtros);
+        if (modelo.Error is null)
+            modelo.Filas = await reportes.TopEquiposAsync(filtros);
         return View(modelo);
     }
 
-    public async Task<IActionResult> Historial(
-        string? username, DateOnly? desde, DateOnly? hasta, int? categoriaId)
+    // GET /Reportes/Historial?username=&desde=&hasta=&categoriaId=
+    public async Task<IActionResult> Historial(FiltrosViewModel filtros)
     {
-        var modelo = new PaginaReporteViewModel<HistorialFilaViewModel>
-        {
-            Filtros = await CrearFiltrosAsync(categoriaId, desde, hasta, username)
-        };
-        if (FechasValidas(desde, hasta, modelo))
-            modelo.Filas = await reportes.HistorialAsync(username, desde, hasta, categoriaId);
+        var modelo = await CrearModelo<HistorialFilaViewModel>(filtros);
+        if (modelo.Error is null)
+            modelo.Filas = await reportes.HistorialAsync(filtros);
         return View(modelo);
     }
 
-    private async Task<FiltroReporteViewModel> CrearFiltrosAsync(
-        int? categoriaId, DateOnly? desde, DateOnly? hasta, string? username) => new()
+    // Prepara el modelo de la vista: carga las categorías del filtro y
+    // revisa que el rango de fechas tenga sentido.
+    private async Task<ReporteViewModel<TFila>> CrearModelo<TFila>(FiltrosViewModel filtros)
     {
-        CategoriaId = categoriaId,
-        Desde = desde,
-        Hasta = hasta,
-        Username = username,
-        Categorias = await reportes.CategoriasAsync()
-    };
+        filtros.Categorias = await reportes.CategoriasAsync();
+        var modelo = new ReporteViewModel<TFila> { Filtros = filtros };
 
-    private static bool FechasValidas<T>(
-        DateOnly? desde, DateOnly? hasta, PaginaReporteViewModel<T> modelo)
-    {
-        if (desde.HasValue && hasta.HasValue && desde > hasta)
-        {
+        if (filtros.Desde > filtros.Hasta)
             modelo.Error = "La fecha inicial no puede ser posterior a la fecha final.";
-            return false;
-        }
-        return true;
+
+        return modelo;
     }
 }

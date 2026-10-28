@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace EquiposReportes.Models;
 
+// Formulario de inicio de sesión.
 public class LoginViewModel
 {
     [Required(ErrorMessage = "Escribe tu nombre de usuario.")]
@@ -14,10 +15,10 @@ public class LoginViewModel
     public string Password { get; set; } = string.Empty;
 }
 
+// Respuesta de POST /api/auth/login
 public class LoginRespuesta
 {
-    public string Token { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
     public string Rol { get; set; } = string.Empty;
-    public DateTimeOffset ExpiresAt { get; set; }
+    public DateTime ExpiresAt { get; set; }
 }

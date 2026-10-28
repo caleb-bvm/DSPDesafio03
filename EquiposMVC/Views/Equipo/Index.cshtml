@@ -12,6 +12,7 @@
         <a class="button button-primary" asp-action="Create">Nuevo equipo</a>
     }
 </div>
+@* Filtros combinables. Se envían por GET (en la URL) para que la paginación los conserve. *@
 <form asp-action="Index" method="get" class="filter-card" aria-label="Filtros de equipos">
     <div class="field filter-search"><label for="texto">Buscar</label><input id="texto" name="texto" value="@Model.Texto" placeholder="Nombre o código" /></div>
     <div class="field"><label for="categoriaId">Categoría</label>
@@ -77,6 +78,7 @@
         </div>
     }
 </section>
+@* Paginación de 10 en 10: cada enlace repite los filtros actuales y cambia solo "page". *@
 @if (Model.Pagina.TotalPages > 1)
 {
     <nav class="pagination" aria-label="Páginas de equipos">

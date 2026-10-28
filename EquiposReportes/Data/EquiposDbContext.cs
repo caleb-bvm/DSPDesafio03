@@ -1,4 +1,6 @@
-﻿using System;
+// Generado con Scaffold-DbContext (base de datos primero). No se edita a mano.
+// No tiene OnConfiguring: la conexión se registra en Program.cs desde User Secrets.
+using System;
 using System.Collections.Generic;
 using EquiposReportes.Data.Entities;
 using Microsoft.EntityFrameworkCore;

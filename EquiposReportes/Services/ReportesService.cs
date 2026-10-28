@@ -4,60 +4,72 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EquiposReportes.Services;
 
-// Este servicio solo consulta. La conexión debe usar un usuario SQL con db_datareader.
+// Consultas LINQ de los cuatro reportes. SOLO LECTURA:
+//   - Todas usan AsNoTracking() (EF no rastrea cambios).
+//   - Todas proyectan con Select a un ViewModel (no se devuelven entidades).
+//   - La conexión usa el usuario SQL "reportes", que solo tiene db_datareader.
+//
+// Filtro de fechas: "desde" incluye todo ese día y "hasta" también, por eso
+// se compara con "< hasta + 1 día".
 public class ReportesService(EquiposDbContext db)
 {
-    private static readonly TimeZoneInfo ZonaLaboratorio =
-        TimeZoneInfo.FindSystemTimeZoneById("America/Guatemala");
-
+    // Opciones para el filtro de categoría.
     public Task<List<CategoriaOpcionViewModel>> CategoriasAsync() =>
         db.Categorias.AsNoTracking()
             .OrderBy(c => c.Nombre)
             .Select(c => new CategoriaOpcionViewModel { Id = c.Id, Nombre = c.Nombre })
             .ToListAsync();
 
-    public Task<List<InventarioFilaViewModel>> InventarioAsync(
-        DateOnly? desde, DateOnly? hasta, int? categoriaId)
+    // 1. Cantidad de equipos por categoría y por estado.
+    //    Las fechas filtran por FechaRegistro (fecha de alta del equipo).
+    public Task<List<InventarioFilaViewModel>> InventarioAsync(FiltrosViewModel f)
     {
-        var categorias = db.Categorias.AsNoTracking().AsQueryable();
-        if (categoriaId.HasValue)
-            categorias = categorias.Where(c => c.Id == categoriaId.Value);
+        var equipos = db.Equipos.AsNoTracking();
+        if (f.Desde.HasValue)
+            equipos = equipos.Where(e => e.FechaRegistro >= f.Desde.Value);
+        if (f.Hasta.HasValue)
+        {
+            var hastaFin = f.Hasta.Value.AddDays(1);
+            equipos = equipos.Where(e => e.FechaRegistro < hastaFin);
+        }
 
-        var inicio = desde?.ToDateTime(TimeOnly.MinValue);
-        var fin = hasta?.ToDateTime(TimeOnly.MaxValue);
+        var categorias = db.Categorias.AsNoTracking();
+        if (f.CategoriaId.HasValue)
+            categorias = categorias.Where(c => c.Id == f.CategoriaId);
 
-        return categorias.OrderBy(c => c.Nombre)
+        // Una fila por categoría (aunque tenga 0 equipos) con un conteo por estado.
+        return categorias
+            .OrderBy(c => c.Nombre)
             .Select(c => new InventarioFilaViewModel
             {
                 Categoria = c.Nombre,
-                Disponibles = c.Equipos.Count(e => e.Estado == "Disponible"
-                    && (!inicio.HasValue || e.FechaRegistro >= inicio.Value)
-                    && (!fin.HasValue || e.FechaRegistro <= fin.Value)),
-                Prestados = c.Equipos.Count(e => e.Estado == "Prestado"
-                    && (!inicio.HasValue || e.FechaRegistro >= inicio.Value)
-                    && (!fin.HasValue || e.FechaRegistro <= fin.Value)),
-                EnMantenimiento = c.Equipos.Count(e => e.Estado == "Mantenimiento"
-                    && (!inicio.HasValue || e.FechaRegistro >= inicio.Value)
-                    && (!fin.HasValue || e.FechaRegistro <= fin.Value))
+                Disponibles = equipos.Count(e => e.CategoriaId == c.Id && e.Estado == "Disponible"),
+                Prestados = equipos.Count(e => e.CategoriaId == c.Id && e.Estado == "Prestado"),
+                EnMantenimiento = equipos.Count(e => e.CategoriaId == c.Id && e.Estado == "Mantenimiento")
             })
             .ToListAsync();
     }
 
-    public Task<List<VencidoFilaViewModel>> VencidosAsync(
-        DateOnly? desde, DateOnly? hasta, int? categoriaId)
+    // 2. Préstamos vencidos: FechaVencimiento < hoy y FechaDevolucion nula.
+    //    Las fechas filtran por FechaVencimiento.
+    public Task<List<VencidoFilaViewModel>> VencidosAsync(FiltrosViewModel f)
     {
-        var hoy = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ZonaLaboratorio).Date;
+        var hoy = DateTime.Today;
         var prestamos = db.Prestamos.AsNoTracking()
             .Where(p => p.FechaDevolucion == null && p.FechaVencimiento < hoy);
 
-        if (categoriaId.HasValue)
-            prestamos = prestamos.Where(p => p.Equipo.CategoriaId == categoriaId.Value);
-        if (desde.HasValue)
-            prestamos = prestamos.Where(p => p.FechaVencimiento >= desde.Value.ToDateTime(TimeOnly.MinValue));
-        if (hasta.HasValue)
-            prestamos = prestamos.Where(p => p.FechaVencimiento <= hasta.Value.ToDateTime(TimeOnly.MaxValue));
+        if (f.CategoriaId.HasValue)
+            prestamos = prestamos.Where(p => p.Equipo.CategoriaId == f.CategoriaId);
+        if (f.Desde.HasValue)
+            prestamos = prestamos.Where(p => p.FechaVencimiento >= f.Desde.Value);
+        if (f.Hasta.HasValue)
+        {
+            var hastaFin = f.Hasta.Value.AddDays(1);
+            prestamos = prestamos.Where(p => p.FechaVencimiento < hastaFin);
+        }
 
-        return prestamos.OrderBy(p => p.FechaVencimiento)
+        return prestamos
+            .OrderBy(p => p.FechaVencimiento)
             .Select(p => new VencidoFilaViewModel
             {
                 Username = p.Usuario.Username,
@@ -65,26 +77,31 @@ public class ReportesService(EquiposDbContext db)
                 Equipo = p.Equipo.Nombre,
                 FechaPrestamo = p.FechaPrestamo,
                 FechaVencimiento = p.FechaVencimiento,
+                // Se traduce a DATEDIFF(day, FechaVencimiento, hoy) en SQL Server.
                 DiasAtraso = EF.Functions.DateDiffDay(p.FechaVencimiento, hoy)
             })
             .ToListAsync();
     }
 
-    public Task<List<TopEquipoFilaViewModel>> TopEquiposAsync(
-        DateOnly? desde, DateOnly? hasta, int? categoriaId)
+    // 3. Los 5 equipos con más préstamos. Las fechas filtran por FechaPrestamo.
+    public Task<List<TopEquipoFilaViewModel>> TopEquiposAsync(FiltrosViewModel f)
     {
-        var prestamos = db.Prestamos.AsNoTracking().AsQueryable();
-        if (categoriaId.HasValue)
-            prestamos = prestamos.Where(p => p.Equipo.CategoriaId == categoriaId.Value);
-        if (desde.HasValue)
-            prestamos = prestamos.Where(p => p.FechaPrestamo >= desde.Value.ToDateTime(TimeOnly.MinValue));
-        if (hasta.HasValue)
-            prestamos = prestamos.Where(p => p.FechaPrestamo <= hasta.Value.ToDateTime(TimeOnly.MaxValue));
+        var prestamos = db.Prestamos.AsNoTracking();
 
+        if (f.CategoriaId.HasValue)
+            prestamos = prestamos.Where(p => p.Equipo.CategoriaId == f.CategoriaId);
+        if (f.Desde.HasValue)
+            prestamos = prestamos.Where(p => p.FechaPrestamo >= f.Desde.Value);
+        if (f.Hasta.HasValue)
+        {
+            var hastaFin = f.Hasta.Value.AddDays(1);
+            prestamos = prestamos.Where(p => p.FechaPrestamo < hastaFin);
+        }
+
+        // Se agrupan los préstamos por equipo y se cuentan.
         return prestamos
             .GroupBy(p => new
             {
-                p.EquipoId,
                 p.Equipo.CodigoInventario,
                 p.Equipo.Nombre,
                 Categoria = p.Equipo.Categoria.Nombre
@@ -96,29 +113,32 @@ public class ReportesService(EquiposDbContext db)
                 Categoria = g.Key.Categoria,
                 CantidadPrestamos = g.Count()
             })
-            .OrderByDescending(f => f.CantidadPrestamos)
-            .ThenBy(f => f.CodigoInventario)
+            .OrderByDescending(fila => fila.CantidadPrestamos)
+            .ThenBy(fila => fila.CodigoInventario)
             .Take(5)
             .ToListAsync();
     }
 
-    public Task<List<HistorialFilaViewModel>> HistorialAsync(
-        string? username, DateOnly? desde, DateOnly? hasta, int? categoriaId)
+    // 4. Todos los préstamos de un usuario (búsqueda por Username).
+    //    Las fechas filtran por FechaPrestamo.
+    public Task<List<HistorialFilaViewModel>> HistorialAsync(FiltrosViewModel f)
     {
-        var prestamos = db.Prestamos.AsNoTracking().AsQueryable();
-        if (!string.IsNullOrWhiteSpace(username))
-        {
-            var texto = username.Trim();
-            prestamos = prestamos.Where(p => p.Usuario.Username.Contains(texto));
-        }
-        if (categoriaId.HasValue)
-            prestamos = prestamos.Where(p => p.Equipo.CategoriaId == categoriaId.Value);
-        if (desde.HasValue)
-            prestamos = prestamos.Where(p => p.FechaPrestamo >= desde.Value.ToDateTime(TimeOnly.MinValue));
-        if (hasta.HasValue)
-            prestamos = prestamos.Where(p => p.FechaPrestamo <= hasta.Value.ToDateTime(TimeOnly.MaxValue));
+        var prestamos = db.Prestamos.AsNoTracking();
 
-        return prestamos.OrderByDescending(p => p.FechaPrestamo)
+        if (!string.IsNullOrWhiteSpace(f.Username))
+            prestamos = prestamos.Where(p => p.Usuario.Username.Contains(f.Username));
+        if (f.CategoriaId.HasValue)
+            prestamos = prestamos.Where(p => p.Equipo.CategoriaId == f.CategoriaId);
+        if (f.Desde.HasValue)
+            prestamos = prestamos.Where(p => p.FechaPrestamo >= f.Desde.Value);
+        if (f.Hasta.HasValue)
+        {
+            var hastaFin = f.Hasta.Value.AddDays(1);
+            prestamos = prestamos.Where(p => p.FechaPrestamo < hastaFin);
+        }
+
+        return prestamos
+            .OrderByDescending(p => p.FechaPrestamo)
             .Select(p => new HistorialFilaViewModel
             {
                 Username = p.Usuario.Username,

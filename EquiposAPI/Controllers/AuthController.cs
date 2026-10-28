@@ -15,51 +15,40 @@ namespace EquiposAPI.Controllers;
 public class AuthController(
     EquiposDbContext db,
     IPasswordHasher<Usuario> hasher,
-    TokenService tokens,
+    TokenService tokenService,
     IMapper mapper) : ControllerBase
 {
+    // POST /api/auth/login  (anónimo)
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<ActionResult<LoginRespuestaDto>> Login(LoginDto datos)
     {
-        var username = datos.Username.Trim();
-        var usuario = await db.Usuarios.SingleOrDefaultAsync(x => x.Username == username);
+        var usuario = await db.Usuarios.FirstOrDefaultAsync(u => u.Username == datos.Username);
+
+        // Se compara la contraseña escrita con el hash guardado.
         if (usuario is null ||
-            hasher.VerifyHashedPassword(usuario, usuario.PasswordHash, datos.Password)
-                == PasswordVerificationResult.Failed)
+            hasher.VerifyHashedPassword(usuario, usuario.PasswordHash, datos.Password) == PasswordVerificationResult.Failed)
         {
             return Unauthorized(new { message = "Usuario o contraseña incorrectos." });
         }
 
-        return Ok(tokens.CrearToken(usuario));
+        return Ok(tokenService.CrearToken(usuario));
     }
 
+    // POST /api/auth/register  (solo Admin)
     [HttpPost("register")]
     [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<UsuarioListaDto>> Registrar(RegistroUsuarioDto datos)
     {
-        var username = datos.Username.Trim();
-        var email = datos.Email.Trim();
-        var rol = Roles.Normalizar(datos.Rol);
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(email))
-            return BadRequest(new { message = "El usuario y correo son obligatorios." });
-        if (rol is null)
-            return BadRequest(new { message = "El rol debe ser Admin, Docente o Estudiante." });
-        if (await db.Usuarios.AnyAsync(x => x.Username == username))
+        // Username repetido -> 409 Conflict.
+        if (await db.Usuarios.AnyAsync(u => u.Username == datos.Username))
             return Conflict(new { message = "Ese nombre de usuario ya existe." });
 
-        var usuario = new Usuario { Username = username, Email = email, Rol = rol };
-        usuario.PasswordHash = hasher.HashPassword(usuario, datos.Password);
+        var usuario = new Usuario { Username = datos.Username, Email = datos.Email, Rol = datos.Rol };
+        usuario.PasswordHash = hasher.HashPassword(usuario, datos.Password);   // Nunca texto plano.
+
         db.Usuarios.Add(usuario);
-
-        try
-        {
-            await db.SaveChangesAsync();
-        }
-        catch (DbUpdateException error) when (ErroresBaseDatos.EsDuplicado(error))
-        {
-            return Conflict(new { message = "Ese nombre de usuario ya existe." });
-        }
+        await db.SaveChangesAsync();
 
         return StatusCode(StatusCodes.Status201Created, mapper.Map<UsuarioListaDto>(usuario));
     }

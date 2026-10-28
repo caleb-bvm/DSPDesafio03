@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Security.Claims;
 using EquiposReportes.Models;
 using Microsoft.AspNetCore.Authentication;
@@ -9,18 +8,16 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EquiposReportes.Controllers;
 
-public class CuentaController(IHttpClientFactory clientes) : Controller
+// Inicio de sesión de Reportes. Las credenciales se validan contra la API
+// (/api/auth/login); este proyecto no tiene usuarios propios.
+public class CuentaController(IHttpClientFactory httpClientFactory) : Controller
 {
+    // GET /Cuenta/Login
     [AllowAnonymous]
     [HttpGet]
-    public IActionResult Login()
-    {
-        if (User.Identity?.IsAuthenticated == true)
-            return RedirectToAction("Index", "Reportes");
+    public IActionResult Login() => View(new LoginViewModel());
 
-        return View(new LoginViewModel());
-    }
-
+    // POST /Cuenta/Login
     [AllowAnonymous]
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -29,56 +26,54 @@ public class CuentaController(IHttpClientFactory clientes) : Controller
         if (!ModelState.IsValid)
             return View(modelo);
 
+        // 1. Se envían usuario y contraseña a la API.
+        HttpResponseMessage respuesta;
         try
         {
-            var cliente = clientes.CreateClient("EquiposAPI");
-            var respuesta = await cliente.PostAsJsonAsync("api/auth/login", new
-            {
-                modelo.Username,
-                modelo.Password
-            });
-
-            if (respuesta.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                ModelState.AddModelError(string.Empty, "Usuario o contraseña incorrectos.");
-                return View(modelo);
-            }
-
-            if (!respuesta.IsSuccessStatusCode)
-            {
-                ModelState.AddModelError(string.Empty, "No se pudo iniciar sesión. Inténtalo de nuevo.");
-                return View(modelo);
-            }
-
-            var datos = await respuesta.Content.ReadFromJsonAsync<LoginRespuesta>();
-            if (datos is null || datos.Rol != "Admin" || datos.ExpiresAt <= DateTimeOffset.UtcNow)
-            {
-                ModelState.AddModelError(string.Empty, "Los reportes son exclusivos para administradores.");
-                return View(modelo);
-            }
-
-            var claims = new[]
-            {
-                new Claim(ClaimTypes.Name, datos.Username),
-                new Claim(ClaimTypes.Role, datos.Rol)
-            };
-            var identidad = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-            var principal = new ClaimsPrincipal(identidad);
-            await HttpContext.SignInAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme,
-                principal,
-                new AuthenticationProperties { ExpiresUtc = datos.ExpiresAt, IsPersistent = false });
-
-            return RedirectToAction("Index", "Reportes");
+            var cliente = httpClientFactory.CreateClient("EquiposAPI");
+            respuesta = await cliente.PostAsJsonAsync("api/auth/login", modelo);
         }
         catch (HttpRequestException)
         {
-            ModelState.AddModelError(string.Empty, "No se pudo conectar con la API.");
+            ModelState.AddModelError("", "No se pudo conectar con la API.");
             return View(modelo);
         }
+
+        if (respuesta.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            ModelState.AddModelError("", "Usuario o contraseña incorrectos.");
+            return View(modelo);
+        }
+        if (!respuesta.IsSuccessStatusCode)
+        {
+            ModelState.AddModelError("", "No se pudo iniciar sesión. Inténtalo de nuevo.");
+            return View(modelo);
+        }
+
+        // 2. Solo el rol Admin puede entrar a los reportes.
+        var datos = await respuesta.Content.ReadFromJsonAsync<LoginRespuesta>();
+        if (datos?.Rol != "Admin")
+        {
+            ModelState.AddModelError("", "Los reportes son exclusivos para administradores.");
+            return View(modelo);
+        }
+
+        // 3. Se crea la cookie de sesión con el nombre y el rol. Vence junto con el token.
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.Name, datos.Username),
+            new Claim(ClaimTypes.Role, datos.Rol)
+        };
+        var identidad = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(identidad),
+            new AuthenticationProperties { ExpiresUtc = datos.ExpiresAt });
+
+        return RedirectToAction("Index", "Reportes");
     }
 
-    [Authorize]
+    // POST /Cuenta/Salir
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Salir()
@@ -87,6 +82,7 @@ public class CuentaController(IHttpClientFactory clientes) : Controller
         return RedirectToAction(nameof(Login));
     }
 
+    // GET /Cuenta/AccesoDenegado
     [AllowAnonymous]
     public IActionResult AccesoDenegado() => View();
 }

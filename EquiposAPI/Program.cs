@@ -5,87 +5,75 @@ using EquiposAPI.Models;
 using EquiposAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var cadena = builder.Configuration.GetConnectionString("EquiposDb")
-    ?? throw new InvalidOperationException("Configure ConnectionStrings:EquiposDb en User Secrets o variables de entorno.");
-var claveJwt = builder.Configuration["Jwt:Key"];
-if (string.IsNullOrWhiteSpace(claveJwt) || Encoding.UTF8.GetByteCount(claveJwt) < 32)
-    throw new InvalidOperationException("Configure Jwt:Key con al menos 32 caracteres en User Secrets o variables de entorno.");
+// ---------------------------------------------------------------------------
+// 1. Secretos. Se leen de User Secrets (o variables de entorno), nunca de
+//    appsettings.json. Si falta alguno, la API se detiene con un mensaje claro.
+// ---------------------------------------------------------------------------
+var cadenaConexion = builder.Configuration.GetConnectionString("EquiposDb")
+    ?? throw new InvalidOperationException("Falta ConnectionStrings:EquiposDb en User Secrets.");
 
-var emisor = builder.Configuration["Jwt:Issuer"]
-    ?? throw new InvalidOperationException("Falta Jwt:Issuer.");
-var audiencia = builder.Configuration["Jwt:Audience"]
-    ?? throw new InvalidOperationException("Falta Jwt:Audience.");
-if (builder.Configuration.GetValue<int>("Jwt:MinutesToExpire") <= 0)
-    throw new InvalidOperationException("Jwt:MinutesToExpire debe ser mayor que cero.");
+var claveJwt = builder.Configuration["Jwt:Key"] ?? "";
+if (claveJwt.Length < 32)
+    throw new InvalidOperationException("Jwt:Key debe existir en User Secrets y tener al menos 32 caracteres.");
 
-builder.Services.AddDbContext<EquiposDbContext>(opciones => opciones.UseSqlServer(cadena));
-builder.Services.AddAutoMapper(_ => { }, typeof(EquipoProfile));
+// ---------------------------------------------------------------------------
+// 2. Servicios
+// ---------------------------------------------------------------------------
+builder.Services.AddDbContext<EquiposDbContext>(opciones => opciones.UseSqlServer(cadenaConexion));
+builder.Services.AddAutoMapper(_ => { }, typeof(MappingProfile));
 builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<TokenService>();
 
 builder.Services.AddControllers().ConfigureApiBehaviorOptions(opciones =>
 {
+    // Cuando un DTO no pasa las validaciones ([Required], [StringLength]...),
+    // se responde 400 con el mismo formato que el resto de errores: { message }.
     opciones.InvalidModelStateResponseFactory = contexto =>
     {
-        var mensaje = contexto.ModelState.Values
-            .SelectMany(estado => estado.Errors)
+        var primerError = contexto.ModelState.Values
+            .SelectMany(campo => campo.Errors)
             .Select(error => error.ErrorMessage)
-            .FirstOrDefault() ?? "Revise los datos enviados.";
-        return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(new { message = mensaje });
+            .FirstOrDefault();
+        return new BadRequestObjectResult(new { message = primerError ?? "Revise los datos enviados." });
     };
 });
 
+// Autenticación con JWT: cada petición debe traer "Authorization: Bearer <token>".
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opciones =>
     {
-        opciones.MapInboundClaims = false;
         opciones.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = emisor,
-            ValidAudience = audiencia,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(claveJwt)),
-            NameClaimType = "unique_name",
-            RoleClaimType = "role"
-        };
-        opciones.Events = new JwtBearerEvents
-        {
-            OnChallenge = async contexto =>
-            {
-                contexto.HandleResponse();
-                contexto.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await contexto.Response.WriteAsJsonAsync(new { message = "Debe iniciar sesión para continuar." });
-            },
-            OnForbidden = async contexto =>
-            {
-                contexto.Response.StatusCode = StatusCodes.Status403Forbidden;
-                await contexto.Response.WriteAsJsonAsync(new { message = "No tiene permiso para realizar esta acción." });
-            }
+            // Sin tolerancia: el token deja de servir justo cuando expira.
+            ClockSkew = TimeSpan.Zero
         };
     });
 builder.Services.AddAuthorization();
 
+// Swagger con botón "Authorize" para pegar el token y probar los endpoints.
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(opciones =>
 {
     opciones.SwaggerDoc("v1", new OpenApiInfo { Title = "EquiposAPI", Version = "v1" });
     opciones.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Name = "Authorization",
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT",
-        In = ParameterLocation.Header,
         Description = "Pegue el token obtenido en /api/auth/login."
     });
     opciones.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -93,13 +81,17 @@ builder.Services.AddSwaggerGen(opciones =>
         [new OpenApiSecurityScheme
         {
             Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-        }] = Array.Empty<string>()
+        }] = []
     });
 });
 
+// ---------------------------------------------------------------------------
+// 3. Pipeline HTTP
+// ---------------------------------------------------------------------------
 var app = builder.Build();
 
-app.UseExceptionHandler(errorApp => errorApp.Run(async contexto =>
+// Cualquier excepción no controlada devuelve 500 sin mostrar detalles internos.
+app.UseExceptionHandler(error => error.Run(async contexto =>
 {
     contexto.Response.StatusCode = StatusCodes.Status500InternalServerError;
     await contexto.Response.WriteAsJsonAsync(new { message = "Ocurrió un error interno. Intente de nuevo." });
@@ -115,5 +107,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-await AdminSeeder.InicializarAsync(app.Services, app.Configuration);
-await app.RunAsync();
+// Aplica las migraciones y crea el Admin inicial si la tabla Usuarios está vacía.
+await AdminSeeder.InicializarAsync(app);
+
+app.Run();

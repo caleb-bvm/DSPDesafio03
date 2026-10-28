@@ -4,14 +4,10 @@ namespace EquiposMVC.Controllers;
 
 public class HomeController : Controller
 {
-    public IActionResult Index()
-    {
-        return RedirectToAction("Index", "Equipo");
-    }
+    // La página de inicio es el listado de equipos.
+    public IActionResult Index() => RedirectToAction("Index", "Equipo");
 
-    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public IActionResult Error()
-    {
-        return View("~/Views/Shared/Unavailable.cshtml", "Ocurrió un error. Inténtalo de nuevo más tarde.");
-    }
+    // Página genérica para errores inesperados (configurada en Program.cs).
+    public IActionResult Error() =>
+        View("~/Views/Shared/Unavailable.cshtml", "Ocurrió un error. Inténtalo de nuevo más tarde.");
 }

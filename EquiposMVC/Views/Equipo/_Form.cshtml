@@ -2,7 +2,10 @@
 @{
     var categorias = ViewBag.Categorias as List<CategoriaDto> ?? [];
 }
+@* Campos compartidos por Create y Edit. *@
+@* Aquí aparecen los mensajes de la API (409, 400) que el controlador agrega con ModelState.AddModelError. *@
 <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+@* Concurrencia: la RowVersion leída al abrir Edit regresa oculta a la API al guardar. *@
 <input asp-for="RowVersion" type="hidden" />
 <div class="field"><label asp-for="CodigoInventario"></label><input asp-for="CodigoInventario" maxlength="50" /><span asp-validation-for="CodigoInventario" class="field-error"></span></div>
 <div class="field"><label asp-for="Nombre"></label><input asp-for="Nombre" maxlength="150" /><span asp-validation-for="Nombre" class="field-error"></span></div>

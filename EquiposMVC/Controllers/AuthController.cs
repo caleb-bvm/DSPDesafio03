@@ -1,3 +1,4 @@
+using System.Net;
 using EquiposMVC.Models;
 using EquiposMVC.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -6,35 +7,43 @@ namespace EquiposMVC.Controllers;
 
 public class AuthController(AuthService auth) : AppController
 {
+    // GET /Auth/Login
     [HttpGet]
     public IActionResult Login()
     {
+        // Si ya hay sesión, no tiene sentido mostrar el login.
         if (HttpContext.Session.GetString(SessionKeys.Token) is not null)
             return RedirectToAction("Index", "Equipo");
+
         return View(new LoginForm());
     }
 
+    // POST /Auth/Login
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginForm form)
     {
-        if (!ModelState.IsValid) return View(form);
+        if (!ModelState.IsValid)
+            return View(form);
 
-        var result = await auth.Login(form);
-        if (!result.Ok || result.Data is null)
+        var resultado = await auth.Login(form);
+        if (!resultado.Ok)
         {
-            ModelState.AddModelError("", result.Status == System.Net.HttpStatusCode.Unauthorized
+            ModelState.AddModelError("", resultado.Status == HttpStatusCode.Unauthorized
                 ? "Usuario o contraseña incorrectos."
                 : "No fue posible iniciar sesión. Inténtalo de nuevo.");
             return View(form);
         }
 
-        HttpContext.Session.SetString(SessionKeys.Token, result.Data.Token);
-        HttpContext.Session.SetString(SessionKeys.Rol, result.Data.Rol);
-        HttpContext.Session.SetString(SessionKeys.Username, result.Data.Username);
+        // Se guardan token, rol y username en Session.
+        HttpContext.Session.SetString(SessionKeys.Token, resultado.Data!.Token);
+        HttpContext.Session.SetString(SessionKeys.Rol, resultado.Data.Rol);
+        HttpContext.Session.SetString(SessionKeys.Username, resultado.Data.Username);
+
         return RedirectToAction("Index", "Equipo");
     }
 
+    // POST /Auth/Logout
     [HttpPost]
     [ValidateAntiForgeryToken]
     public IActionResult Logout()
@@ -43,27 +52,36 @@ public class AuthController(AuthService auth) : AppController
         return RedirectToAction(nameof(Login));
     }
 
+    // GET /Auth/Register  (solo Admin)
     [HttpGet]
     public IActionResult Register()
     {
-        var access = CheckAccess("Admin");
-        return access ?? View(new RegistroForm());
+        return VerificarAcceso("Admin") ?? View(new RegistroForm());
     }
 
+    // POST /Auth/Register
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Register(RegistroForm form)
     {
-        var access = CheckAccess("Admin");
-        if (access is not null) return access;
+        var acceso = VerificarAcceso("Admin");
+        if (acceso is not null) return acceso;
         if (!ModelState.IsValid) return View(form);
 
-        var result = await auth.Register(form);
-        var error = HandleError(result, form: true);
-        if (error is not null) return error;
-        if (!result.Ok) return View(form);
+        var resultado = await auth.Registrar(form);
+        if (resultado.Ok)
+        {
+            TempData["Success"] = $"Usuario {resultado.Data!.Username} creado.";
+            return RedirectToAction("Index", "Equipo");
+        }
 
-        TempData["Success"] = $"Usuario {result.Data?.Username} creado.";
-        return RedirectToAction("Index", "Equipo");
+        // 409 (username repetido) o 400: se muestra el mensaje y se conserva lo escrito.
+        if (resultado.EsErrorDeFormulario)
+        {
+            ModelState.AddModelError("", resultado.Message);
+            return View(form);
+        }
+
+        return PaginaDeError(resultado);
     }
 }

@@ -2,7 +2,6 @@ using AutoMapper;
 using EquiposAPI.Data;
 using EquiposAPI.Dtos;
 using EquiposAPI.Models;
-using EquiposAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,44 +10,38 @@ namespace EquiposAPI.Controllers;
 
 [ApiController]
 [Route("api/equipos")]
-[Authorize]
+[Authorize]   // Todos los endpoints exigen token; los de escritura, además, rol Admin.
 public class EquiposController(EquiposDbContext db, IMapper mapper) : ControllerBase
 {
+    // GET /api/equipos?texto=&categoriaId=&estado=&page=1&pageSize=10
+    // Los filtros son opcionales y se pueden combinar.
     [HttpGet]
     public async Task<ActionResult<PaginaDto<EquipoListaDto>>> Listar(
         string? texto, int? categoriaId, string? estado, int page = 1, int pageSize = 10)
     {
-        if (page < 1 || pageSize is < 1 or > 100)
-            return BadRequest(new { message = "La página debe ser mayor que cero y el tamaño entre 1 y 100." });
+        if (page < 1 || pageSize < 1 || pageSize > 100)
+            return BadRequest(new { message = "page debe ser mayor que 0 y pageSize estar entre 1 y 100." });
 
-        IQueryable<Equipo> consulta = db.Equipos.AsNoTracking().Include(x => x.Categoria);
+        // La consulta se arma por partes y se ejecuta al final (CountAsync / ToListAsync).
+        var consulta = db.Equipos.AsNoTracking().Include(e => e.Categoria).AsQueryable();
 
+        // Un Estudiante solo puede ver equipos disponibles, aunque cambie el filtro en la URL.
         if (User.IsInRole(Roles.Estudiante))
-        {
-            // Un estudiante solo consulta disponibles, aunque cambie el filtro en la URL.
-            consulta = consulta.Where(x => x.Estado == EstadoEquipo.Disponible);
-        }
-        else if (!string.IsNullOrWhiteSpace(estado))
-        {
-            var estadoNormalizado = EstadoEquipo.Normalizar(estado);
-            if (estadoNormalizado is null)
-                return BadRequest(new { message = "El estado no es válido." });
-            consulta = consulta.Where(x => x.Estado == estadoNormalizado);
-        }
+            estado = EstadoEquipo.Disponible;
 
         if (!string.IsNullOrWhiteSpace(texto))
-        {
-            var busqueda = texto.Trim();
-            consulta = consulta.Where(x => x.CodigoInventario.Contains(busqueda) ||
-                x.Nombre.Contains(busqueda) ||
-                (x.Descripcion != null && x.Descripcion.Contains(busqueda)));
-        }
+            consulta = consulta.Where(e => e.Nombre.Contains(texto) || e.CodigoInventario.Contains(texto));
         if (categoriaId.HasValue)
-            consulta = consulta.Where(x => x.CategoriaId == categoriaId.Value);
+            consulta = consulta.Where(e => e.CategoriaId == categoriaId);
+        if (!string.IsNullOrWhiteSpace(estado))
+            consulta = consulta.Where(e => e.Estado == estado);
 
         var total = await consulta.CountAsync();
-        var equipos = await consulta.OrderBy(x => x.Nombre).ThenBy(x => x.Id)
-            .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var equipos = await consulta
+            .OrderBy(e => e.Nombre)
+            .Skip((page - 1) * pageSize)   // Salta las páginas anteriores.
+            .Take(pageSize)                // Toma solo los de esta página.
+            .ToListAsync();
 
         return Ok(new PaginaDto<EquipoListaDto>
         {
@@ -60,122 +53,92 @@ public class EquiposController(EquiposDbContext db, IMapper mapper) : Controller
         });
     }
 
+    // GET /api/equipos/5  (detalle con categoría)
     [HttpGet("{id:int}")]
     public async Task<ActionResult<EquipoListaDto>> Obtener(int id)
     {
-        var equipo = await db.Equipos.AsNoTracking().Include(x => x.Categoria)
-            .FirstOrDefaultAsync(x => x.Id == id);
-        if (equipo is null ||
-            (User.IsInRole(Roles.Estudiante) && equipo.Estado != EstadoEquipo.Disponible))
+        var equipo = await db.Equipos.AsNoTracking().Include(e => e.Categoria)
+            .FirstOrDefaultAsync(e => e.Id == id);
+        // Igual que en el listado: el Estudiante solo puede ver equipos disponibles.
+        if (equipo is null || (User.IsInRole(Roles.Estudiante) && equipo.Estado != EstadoEquipo.Disponible))
             return NotFound(new { message = "Equipo no encontrado." });
 
         return Ok(mapper.Map<EquipoListaDto>(equipo));
     }
 
+    // POST /api/equipos
     [HttpPost]
     [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<EquipoListaDto>> Crear(EquipoCrearDto datos)
     {
-        var codigo = datos.CodigoInventario.Trim();
-        var nombre = datos.Nombre.Trim();
-        var estado = EstadoEquipo.Normalizar(datos.Estado);
-        if (string.IsNullOrWhiteSpace(codigo) || string.IsNullOrWhiteSpace(nombre))
-            return BadRequest(new { message = "El código y el nombre son obligatorios." });
-        if (estado is null)
-            return BadRequest(new { message = "El estado no es válido." });
-
         var categoria = await db.Categorias.FindAsync(datos.CategoriaId);
         if (categoria is null)
-            return BadRequest(new { message = "Seleccione una categoría existente." });
-        if (await db.Equipos.AnyAsync(x => x.CodigoInventario == codigo))
+            return BadRequest(new { message = "La categoría no existe." });
+
+        if (await db.Equipos.AnyAsync(e => e.CodigoInventario == datos.CodigoInventario))
             return Conflict(new { message = "Ya existe un equipo con ese código de inventario." });
 
         var equipo = mapper.Map<Equipo>(datos);
-        equipo.CodigoInventario = codigo;
-        equipo.Nombre = nombre;
-        equipo.Estado = estado;
-        equipo.FechaRegistro = RelojLocal.Ahora();
         equipo.Categoria = categoria;
-        equipo.Descripcion = datos.Descripcion?.Trim();
-        db.Equipos.Add(equipo);
-        try
-        {
-            await db.SaveChangesAsync();
-        }
-        catch (DbUpdateException error) when (ErroresBaseDatos.EsDuplicado(error))
-        {
-            return Conflict(new { message = "Ya existe un equipo con ese código de inventario." });
-        }
+        equipo.FechaRegistro = DateTime.Now;
 
-        return CreatedAtAction(nameof(Obtener), new { id = equipo.Id },
-            mapper.Map<EquipoListaDto>(equipo));
+        db.Equipos.Add(equipo);
+        await db.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(Obtener), new { id = equipo.Id }, mapper.Map<EquipoListaDto>(equipo));
     }
 
+    // PUT /api/equipos/5  (usa concurrencia optimista con RowVersion)
     [HttpPut("{id:int}")]
     [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<EquipoListaDto>> Actualizar(int id, EquipoActualizarDto datos)
     {
-        byte[] version;
-        try
-        {
-            version = Convert.FromBase64String(datos.RowVersion);
-        }
-        catch (FormatException)
-        {
-            return BadRequest(new { message = "La versión del equipo no es válida." });
-        }
-        if (version.Length != 8)
-            return BadRequest(new { message = "La versión del equipo no es válida." });
-
-        var equipo = await db.Equipos.Include(x => x.Categoria)
-            .FirstOrDefaultAsync(x => x.Id == id);
+        var equipo = await db.Equipos.Include(e => e.Categoria).FirstOrDefaultAsync(e => e.Id == id);
         if (equipo is null)
             return NotFound(new { message = "Equipo no encontrado." });
-        if (!equipo.RowVersion.SequenceEqual(version))
-            return Conflict(new { message = "El equipo fue modificado por otra persona. Vuelva a cargarlo." });
-
-        var codigo = datos.CodigoInventario.Trim();
-        var nombre = datos.Nombre.Trim();
-        var estado = EstadoEquipo.Normalizar(datos.Estado);
-        if (string.IsNullOrWhiteSpace(codigo) || string.IsNullOrWhiteSpace(nombre))
-            return BadRequest(new { message = "El código y el nombre son obligatorios." });
-        if (estado is null)
-            return BadRequest(new { message = "El estado no es válido." });
 
         var categoria = await db.Categorias.FindAsync(datos.CategoriaId);
         if (categoria is null)
-            return BadRequest(new { message = "Seleccione una categoría existente." });
-        if (await db.Equipos.AnyAsync(x => x.Id != id && x.CodigoInventario == codigo))
+            return BadRequest(new { message = "La categoría no existe." });
+
+        if (await db.Equipos.AnyAsync(e => e.Id != id && e.CodigoInventario == datos.CodigoInventario))
             return Conflict(new { message = "Ya existe un equipo con ese código de inventario." });
-        if (estado != EstadoEquipo.Prestado &&
-            await db.Prestamos.AnyAsync(x => x.EquipoId == id && x.FechaDevolucion == null))
+
+        // Si el equipo está prestado, no se le puede cambiar el estado a mano:
+        // primero hay que registrar la devolución.
+        var tienePrestamoActivo = await db.Prestamos.AnyAsync(p => p.EquipoId == id && p.FechaDevolucion == null);
+        if (tienePrestamoActivo && datos.Estado != EstadoEquipo.Prestado)
+            return Conflict(new { message = "El equipo tiene un préstamo activo; registre primero la devolución." });
+
+        // CONCURRENCIA: le decimos a EF que la versión "original" es la que el
+        // cliente leyó. EF genera: UPDATE ... WHERE Id = @id AND RowVersion = @versionLeida
+        // Si otra persona guardó antes, la RowVersion ya cambió, no se actualiza
+        // ninguna fila y EF lanza DbUpdateConcurrencyException.
+        try
         {
-            return Conflict(new { message = "El equipo tiene un préstamo activo y debe seguir Prestado." });
+            db.Entry(equipo).Property(e => e.RowVersion).OriginalValue = Convert.FromBase64String(datos.RowVersion);
+        }
+        catch (FormatException)
+        {
+            return BadRequest(new { message = "La RowVersion enviada no es válida." });
         }
 
-        db.Entry(equipo).Property(x => x.RowVersion).OriginalValue = version;
         mapper.Map(datos, equipo);
-        equipo.CodigoInventario = codigo;
-        equipo.Nombre = nombre;
-        equipo.Estado = estado;
         equipo.Categoria = categoria;
-        equipo.Descripcion = datos.Descripcion?.Trim();
+
         try
         {
             await db.SaveChangesAsync();
         }
         catch (DbUpdateConcurrencyException)
         {
-            return Conflict(new { message = "El equipo fue modificado por otra persona. Vuelva a cargarlo." });
-        }
-        catch (DbUpdateException error) when (ErroresBaseDatos.EsDuplicado(error))
-        {
-            return Conflict(new { message = "Ya existe un equipo con ese código de inventario." });
+            return Conflict(new { message = "Otro usuario modificó este equipo. Vuelva a cargarlo antes de guardar." });
         }
 
         return Ok(mapper.Map<EquipoListaDto>(equipo));
     }
 
+    // DELETE /api/equipos/5
     [HttpDelete("{id:int}")]
     [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> Eliminar(int id)
@@ -183,23 +146,13 @@ public class EquiposController(EquiposDbContext db, IMapper mapper) : Controller
         var equipo = await db.Equipos.FindAsync(id);
         if (equipo is null)
             return NotFound(new { message = "Equipo no encontrado." });
-        if (await db.Prestamos.AnyAsync(x => x.EquipoId == id))
+
+        // Regla de negocio: un equipo con préstamos históricos no se elimina.
+        if (await db.Prestamos.AnyAsync(p => p.EquipoId == id))
             return Conflict(new { message = "No se puede eliminar un equipo con préstamos históricos." });
 
         db.Equipos.Remove(equipo);
-        try
-        {
-            await db.SaveChangesAsync();
-        }
-        catch (DbUpdateException error) when (ErroresBaseDatos.EsRestriccion(error))
-        {
-            return Conflict(new { message = "No se puede eliminar un equipo con préstamos históricos." });
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            return Conflict(new { message = "El equipo cambió mientras se intentaba eliminar. Vuelva a cargarlo." });
-        }
-
+        await db.SaveChangesAsync();
         return NoContent();
     }
 }

@@ -1,9 +1,8 @@
-using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using AutoMapper;
 using EquiposAPI.Data;
 using EquiposAPI.Dtos;
 using EquiposAPI.Models;
-using EquiposAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,46 +14,49 @@ namespace EquiposAPI.Controllers;
 [Authorize]
 public class PrestamosController(EquiposDbContext db, IMapper mapper) : ControllerBase
 {
+    // GET /api/prestamos?soloVencidos=true
+    // Admin y Docente ven todos. El Estudiante solo ve los suyos.
     [HttpGet]
     public async Task<ActionResult<List<PrestamoListaDto>>> Listar(bool soloVencidos = false)
     {
-        IQueryable<Prestamo> consulta = db.Prestamos.AsNoTracking()
-            .Include(x => x.Equipo).Include(x => x.Usuario);
+        var consulta = db.Prestamos.AsNoTracking()
+            .Include(p => p.Equipo)
+            .Include(p => p.Usuario)
+            .AsQueryable();
 
         if (User.IsInRole(Roles.Estudiante))
         {
-            var idEnToken = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-            if (!int.TryParse(idEnToken, out var usuarioId))
-                return Unauthorized(new { message = "La sesión no contiene un usuario válido." });
-            consulta = consulta.Where(x => x.UsuarioId == usuarioId);
-        }
-        if (soloVencidos)
-        {
-            var hoy = RelojLocal.Hoy();
-            consulta = consulta.Where(x => x.FechaDevolucion == null && x.FechaVencimiento < hoy);
+            // El Id se toma del token (claim NameIdentifier), NUNCA de un parámetro.
+            // Así el estudiante no puede ver préstamos ajenos cambiando la URL.
+            var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            consulta = consulta.Where(p => p.UsuarioId == usuarioId);
         }
 
-        var prestamos = await consulta.OrderByDescending(x => x.FechaPrestamo)
-            .ThenByDescending(x => x.Id).ToListAsync();
+        if (soloVencidos)
+            consulta = consulta.Where(p => p.FechaDevolucion == null && p.FechaVencimiento < DateTime.Today);
+
+        var prestamos = await consulta.OrderByDescending(p => p.FechaPrestamo).ToListAsync();
         return Ok(mapper.Map<List<PrestamoListaDto>>(prestamos));
     }
 
+    // POST /api/prestamos  (Admin o Docente)
     [HttpPost]
-    [Authorize(Roles = "Admin,Docente")]
+    [Authorize(Roles = Roles.AdminODocente)]
     public async Task<ActionResult<PrestamoListaDto>> Crear(PrestamoCrearDto datos)
     {
-        var ahora = RelojLocal.Ahora();
-        var fechaVencimiento = RelojLocal.DiaEnGuatemala(datos.FechaVencimiento);
-        if (fechaVencimiento < ahora.Date || fechaVencimiento > ahora.Date.AddDays(7))
-        {
-            return BadRequest(new { message = "El vencimiento debe estar entre hoy y los próximos 7 días." });
-        }
+        // Regla: el vencimiento va de hoy a hoy + 7 días.
+        var hoy = DateTime.Today;
+        var vencimiento = datos.FechaVencimiento.Date;
+        if (vencimiento < hoy || vencimiento > hoy.AddDays(7))
+            return BadRequest(new { message = "La fecha de vencimiento debe estar entre hoy y los próximos 7 días." });
 
         var equipo = await db.Equipos.FindAsync(datos.EquipoId);
         if (equipo is null)
             return NotFound(new { message = "Equipo no encontrado." });
+
+        // Regla: solo se presta un equipo Disponible. Si no, 409 Conflict.
         if (equipo.Estado != EstadoEquipo.Disponible)
-            return Conflict(new { message = "El equipo no está disponible para préstamo." });
+            return Conflict(new { message = $"El equipo no está disponible (estado actual: {equipo.Estado})." });
 
         var usuario = await db.Usuarios.FindAsync(datos.UsuarioId);
         if (usuario is null)
@@ -62,55 +64,48 @@ public class PrestamosController(EquiposDbContext db, IMapper mapper) : Controll
 
         var prestamo = new Prestamo
         {
-            EquipoId = equipo.Id,
             Equipo = equipo,
-            UsuarioId = usuario.Id,
             Usuario = usuario,
-            FechaPrestamo = ahora,
-            FechaVencimiento = fechaVencimiento,
-            Observaciones = datos.Observaciones?.Trim()
+            FechaPrestamo = DateTime.Now,
+            FechaVencimiento = vencimiento,
+            Observaciones = datos.Observaciones
         };
-        equipo.Estado = EstadoEquipo.Prestado;
         db.Prestamos.Add(prestamo);
+        equipo.Estado = EstadoEquipo.Prestado;
 
         try
         {
-            // EF guarda el préstamo y el nuevo estado del equipo en una transacción.
+            // UN SOLO SaveChanges: guarda el préstamo y el nuevo estado del equipo
+            // en la misma transacción. O se guardan los dos, o ninguno.
             await db.SaveChangesAsync();
         }
         catch (DbUpdateConcurrencyException)
         {
-            return Conflict(new { message = "El equipo cambió. Vuelva a consultar su disponibilidad." });
-        }
-        catch (DbUpdateException error) when (ErroresBaseDatos.EsDuplicado(error))
-        {
-            return Conflict(new { message = "El equipo ya tiene un préstamo activo." });
+            // Otro usuario prestó o editó el mismo equipo al mismo tiempo (RowVersion distinta).
+            return Conflict(new { message = "El equipo acaba de cambiar. Vuelva a consultar su disponibilidad." });
         }
 
         return StatusCode(StatusCodes.Status201Created, mapper.Map<PrestamoListaDto>(prestamo));
     }
 
+    // PUT /api/prestamos/5/devolucion  (Admin o Docente)
     [HttpPut("{id:int}/devolucion")]
-    [Authorize(Roles = "Admin,Docente")]
+    [Authorize(Roles = Roles.AdminODocente)]
     public async Task<ActionResult<PrestamoListaDto>> Devolver(int id)
     {
-        var prestamo = await db.Prestamos.Include(x => x.Equipo).Include(x => x.Usuario)
-            .FirstOrDefaultAsync(x => x.Id == id);
+        var prestamo = await db.Prestamos
+            .Include(p => p.Equipo)
+            .Include(p => p.Usuario)
+            .FirstOrDefaultAsync(p => p.Id == id);
         if (prestamo is null)
             return NotFound(new { message = "Préstamo no encontrado." });
-        if (prestamo.FechaDevolucion.HasValue)
+        if (prestamo.FechaDevolucion is not null)
             return Conflict(new { message = "Este préstamo ya fue devuelto." });
 
-        prestamo.FechaDevolucion = RelojLocal.Ahora();
+        // Se registra la devolución y el equipo vuelve a estar Disponible.
+        prestamo.FechaDevolucion = DateTime.Now;
         prestamo.Equipo.Estado = EstadoEquipo.Disponible;
-        try
-        {
-            await db.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            return Conflict(new { message = "El préstamo cambió. Vuelva a cargar la lista." });
-        }
+        await db.SaveChangesAsync();
 
         return Ok(mapper.Map<PrestamoListaDto>(prestamo));
     }

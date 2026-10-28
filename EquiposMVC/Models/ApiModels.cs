@@ -2,6 +2,13 @@ using System.ComponentModel.DataAnnotations;
 
 namespace EquiposMVC.Models;
 
+// Convención usada en todo el cliente:
+//   - Clases "...Dto":  lo que la API devuelve (solo lectura en las vistas).
+//   - Clases "...Form": lo que el usuario escribe en un formulario y se envía a la API.
+// Los nombres de propiedad son iguales a los de la API para que el JSON coincida.
+
+// ===================== Autenticación y usuarios =====================
+
 public class LoginForm
 {
     [Required(ErrorMessage = "Escribe tu nombre de usuario.")]
@@ -19,7 +26,6 @@ public class LoginResponse
     public string Token { get; set; } = "";
     public string Username { get; set; } = "";
     public string Rol { get; set; } = "";
-    public DateTime ExpiresAt { get; set; }
 }
 
 public class UsuarioDto
@@ -54,6 +60,8 @@ public class RegistroForm
     public string Rol { get; set; } = "Estudiante";
 }
 
+// ===================== Categorías =====================
+
 public class CategoriaDto
 {
     public int Id { get; set; }
@@ -67,6 +75,8 @@ public class CategoriaForm
     [Display(Name = "Nombre de la categoría")]
     public string Nombre { get; set; } = "";
 }
+
+// ===================== Equipos =====================
 
 public class EquipoDto
 {
@@ -92,8 +102,8 @@ public class EquipoForm
     [Display(Name = "Nombre")]
     public string Nombre { get; set; } = "";
 
-    [Display(Name = "Descripción")]
     [StringLength(500, ErrorMessage = "Usa hasta 500 caracteres.")]
+    [Display(Name = "Descripción")]
     public string? Descripcion { get; set; }
 
     [Range(1, int.MaxValue, ErrorMessage = "Selecciona una categoría.")]
@@ -104,10 +114,12 @@ public class EquipoForm
     [Display(Name = "Estado")]
     public string Estado { get; set; } = "Disponible";
 
-    // La versión leída al abrir Edit debe regresar intacta a la API.
-    public string RowVersion { get; set; } = "";
+    // Concurrencia: la versión que se leyó al abrir Edit viaja en un campo oculto
+    // y regresa intacta a la API al guardar. En Create va vacía (por eso admite null).
+    public string? RowVersion { get; set; }
 }
 
+// Página de resultados que devuelve GET /api/equipos
 public class PaginaDto<T>
 {
     public List<T> Items { get; set; } = [];
@@ -116,6 +128,18 @@ public class PaginaDto<T>
     public int TotalCount { get; set; }
     public int TotalPages { get; set; }
 }
+
+// Modelo de la vista Equipo/Index: resultados + filtros elegidos.
+public class EquipoIndexViewModel
+{
+    public PaginaDto<EquipoDto> Pagina { get; set; } = new();
+    public List<CategoriaDto> Categorias { get; set; } = [];
+    public string? Texto { get; set; }
+    public int? CategoriaId { get; set; }
+    public string? Estado { get; set; }
+}
+
+// ===================== Préstamos =====================
 
 public class PrestamoDto
 {
@@ -141,21 +165,11 @@ public class PrestamoForm
     [Display(Name = "Prestatario")]
     public int UsuarioId { get; set; }
 
-    [Required(ErrorMessage = "Indica la fecha de vencimiento.")]
     [DataType(DataType.Date)]
     [Display(Name = "Fecha de vencimiento")]
     public DateTime FechaVencimiento { get; set; } = DateTime.Today.AddDays(1);
 
-    [Display(Name = "Observaciones")]
     [StringLength(500, ErrorMessage = "Usa hasta 500 caracteres.")]
+    [Display(Name = "Observaciones")]
     public string? Observaciones { get; set; }
-}
-
-public class EquipoIndexViewModel
-{
-    public PaginaDto<EquipoDto> Pagina { get; set; } = new();
-    public List<CategoriaDto> Categorias { get; set; } = [];
-    public string? Texto { get; set; }
-    public int? CategoriaId { get; set; }
-    public string? Estado { get; set; }
 }

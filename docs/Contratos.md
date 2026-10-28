@@ -28,7 +28,7 @@ nombre de usuario y rol. El registro de usuarios es exclusivo de Admin.
 
 `estado` es `Disponible`, `Prestado` o `Mantenimiento`. `rowVersion` es una
 cadena Base64. El cliente debe devolver la versión que obtuvo al abrir Edit.
-La API asigna `fechaRegistro` al crear el equipo, con hora de Guatemala; los
+La API asigna `fechaRegistro` al crear el equipo, con la hora local del servidor; los
 formularios no la envían ni pueden modificarla.
 
 | Método y ruta | Entrada | Salida |

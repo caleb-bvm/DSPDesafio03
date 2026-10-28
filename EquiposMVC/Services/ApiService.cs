@@ -1,87 +1,67 @@
 using System.Net;
-using System.Net.Http.Json;
-using System.Text.Json;
 
 namespace EquiposMVC.Services;
 
-public static class SessionKeys
+// Resultado de una llamada a la API: si salió bien, el código HTTP y el mensaje de error.
+public class ApiResult
 {
-    public const string Token = "Token";
-    public const string Rol = "Rol";
-    public const string Username = "Username";
+    public bool Ok { get; set; }
+    public HttpStatusCode Status { get; set; }
+    public string Message { get; set; } = "";
+
+    // 400 y 409 son errores que el usuario puede corregir: se muestran dentro del formulario.
+    public bool EsErrorDeFormulario => Status is HttpStatusCode.BadRequest or HttpStatusCode.Conflict;
 }
 
-public class ApiTokenHandler(IHttpContextAccessor contextAccessor) : DelegatingHandler
+// Igual que ApiResult, pero además trae los datos que devolvió la API.
+public class ApiResult<T> : ApiResult
 {
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        var token = contextAccessor.HttpContext?.Session.GetString(SessionKeys.Token);
-        if (!string.IsNullOrWhiteSpace(token))
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-        return base.SendAsync(request, cancellationToken);
-    }
+    public T? Data { get; set; }
 }
 
-public class ApiResult<T>
-{
-    public bool Ok { get; init; }
-    public T? Data { get; init; }
-    public HttpStatusCode Status { get; init; }
-    public string Message { get; init; } = "";
-}
-
+// Clase base de los servicios. Hace la petición y convierte la respuesta en un ApiResult.
+// El token NO se agrega aquí: lo agrega ApiTokenHandler automáticamente.
 public abstract class ApiService(HttpClient client)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    protected Task<ApiResult<T>> Get<T>(string url) => Enviar<T>(client.GetAsync(url));
+    protected Task<ApiResult<T>> Post<T>(string url, object datos) => Enviar<T>(client.PostAsJsonAsync(url, datos));
+    protected Task<ApiResult<T>> Put<T>(string url, object datos) => Enviar<T>(client.PutAsJsonAsync(url, datos));
+    protected Task<ApiResult<T>> Put<T>(string url) => Enviar<T>(client.PutAsync(url, null));
+    protected Task<ApiResult<object>> Delete(string url) => Enviar<object>(client.DeleteAsync(url));
 
-    protected Task<ApiResult<T>> Get<T>(string path) => Send<T>(() => client.GetAsync(path));
-    protected Task<ApiResult<T>> Post<T>(string path, object body) => Send<T>(() => client.PostAsJsonAsync(path, body));
-    protected Task<ApiResult<T>> Put<T>(string path, object body) => Send<T>(() => client.PutAsJsonAsync(path, body));
-    protected Task<ApiResult<bool>> Put(string path) => Send<bool>(() => client.PutAsync(path, null));
-    protected Task<ApiResult<bool>> Delete(string path) => Send<bool>(() => client.DeleteAsync(path));
-
-    private static async Task<ApiResult<T>> Send<T>(Func<Task<HttpResponseMessage>> request)
+    private static async Task<ApiResult<T>> Enviar<T>(Task<HttpResponseMessage> peticion)
     {
         try
         {
-            using var response = await request();
-            if (!response.IsSuccessStatusCode)
+            using var respuesta = await peticion;
+
+            // Éxito (2xx): se leen los datos. 204 No Content no trae cuerpo.
+            if (respuesta.IsSuccessStatusCode)
             {
-                var message = "No se pudo completar la solicitud.";
-                if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict)
-                {
-                    try
-                    {
-                        var error = await response.Content.ReadFromJsonAsync<ApiError>(JsonOptions);
-                        if (!string.IsNullOrWhiteSpace(error?.Message)) message = error.Message;
-                    }
-                    catch (JsonException) { }
-                }
-                return new ApiResult<T> { Status = response.StatusCode, Message = message };
+                var datos = respuesta.StatusCode == HttpStatusCode.NoContent
+                    ? default
+                    : await respuesta.Content.ReadFromJsonAsync<T>();
+                return new ApiResult<T> { Ok = true, Status = respuesta.StatusCode, Data = datos };
             }
 
-            if (typeof(T) == typeof(bool))
-                return new ApiResult<T> { Ok = true, Status = response.StatusCode, Data = (T)(object)true };
-
-            var data = await response.Content.ReadFromJsonAsync<T>(JsonOptions);
-            return new ApiResult<T> { Ok = true, Status = response.StatusCode, Data = data };
+            // Error: se guarda el código. En 400 y 409 la API manda { "message": "..." }.
+            var resultado = new ApiResult<T> { Status = respuesta.StatusCode };
+            if (resultado.EsErrorDeFormulario)
+            {
+                var error = await respuesta.Content.ReadFromJsonAsync<ErrorApi>();
+                resultado.Message = error?.Message ?? "Revisa los datos enviados.";
+            }
+            return resultado;
         }
         catch (HttpRequestException)
         {
-            return new ApiResult<T> { Status = HttpStatusCode.ServiceUnavailable, Message = "El servicio no está disponible. Inténtalo de nuevo." };
-        }
-        catch (TaskCanceledException)
-        {
-            return new ApiResult<T> { Status = HttpStatusCode.GatewayTimeout, Message = "El servicio tardó demasiado en responder. Inténtalo de nuevo." };
-        }
-        catch (JsonException)
-        {
-            return new ApiResult<T> { Status = HttpStatusCode.BadGateway, Message = "No se pudo leer la respuesta del servicio." };
+            // La API está apagada o no se pudo conectar: se trata como un 503.
+            return new ApiResult<T> { Status = HttpStatusCode.ServiceUnavailable };
         }
     }
 
-    private class ApiError
+    // Forma del JSON de error que devuelve la API.
+    private class ErrorApi
     {
         public string? Message { get; set; }
     }
