@@ -26,7 +26,7 @@
             </a>
             @if (autenticado)
             {
-                @* Menú por rol: el Estudiante solo ve "Equipos" (disponibles) y "Mis préstamos". El Admin ve todo. *@
+                @* Menú por rol: el Estudiante solo ve "Equipos" (disponibles) y "Mis préstamos". El Docente además ve "Alumnos" (solo lectura). El Admin ve todo. *@
                 <nav class="main-nav" aria-label="Navegación principal">
                     <a class="nav-link @(controller == "Equipo" ? "active" : "")" asp-controller="Equipo" asp-action="Index">Equipos</a>
                     <a class="nav-link @(controller == "Prestamo" ? "active" : "")" asp-controller="Prestamo" asp-action="Index">@(rol == "Estudiante" ? "Mis préstamos" : "Préstamos")</a>
@@ -38,6 +38,10 @@
                         {
                             <a class="nav-link" href="@reportesUrl">Reportes</a>
                         }
+                    }
+                    else if (rol == "Docente")
+                    {
+                        <a class="nav-link @(controller == "Auth" ? "active" : "")" asp-controller="Auth" asp-action="Alumnos">Alumnos</a>
                     }
                 </nav>
                 <div class="account">

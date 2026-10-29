@@ -180,7 +180,9 @@ base; la aplicación sigue sin escribir directo en SQL Server.
 | Estudiante | Ver los equipos disponibles y solo sus propios préstamos |
 
 Solo el Admin ve la lista de usuarios, desde **Usuarios** en el menú del MVC, y
-desde ahí registra usuarios nuevos con el botón **Registrar usuario**.
+desde ahí registra usuarios nuevos con el botón **Registrar usuario**. El
+Docente ve la lista de estudiantes en **Alumnos**, solo para consulta: no puede
+registrar ni modificar cuentas.
 Para ver los reportes, el Admin elige **Reportes** en el menú; Reportes vuelve a
 pedir usuario y contraseña y los valida contra la API.
 

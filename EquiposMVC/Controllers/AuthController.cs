@@ -65,6 +65,19 @@ public class AuthController(AuthService auth) : AppController
         return View(resultado.Data);
     }
 
+    // GET /Auth/Alumnos  (solo Docente; solo lectura)
+    [HttpGet]
+    public async Task<IActionResult> Alumnos()
+    {
+        var acceso = VerificarAcceso("Docente");
+        if (acceso is not null) return acceso;
+
+        var resultado = await auth.Usuarios();
+        if (!resultado.Ok) return PaginaDeError(resultado);
+
+        return View(resultado.Data!.Where(u => u.Rol == "Estudiante").ToList());
+    }
+
     // GET /Auth/Register  (solo Admin)
     [HttpGet]
     public IActionResult Register()

@@ -1,0 +1,31 @@
+@model List<UsuarioDto>
+@{
+    ViewData["Title"] = "Alumnos";
+}
+@* Solo lectura: el Docente consulta a los estudiantes, pero no puede registrar ni editar cuentas. *@
+<div class="page-heading">
+    <div><span class="eyebrow">Docencia</span><h1>Alumnos</h1><p>Estudiantes registrados en el sistema.</p></div>
+</div>
+<section class="list-card">
+    @if (Model.Count == 0)
+    {
+        <div class="empty-state"><h2>Aún no hay alumnos</h2><p>El administrador todavía no ha registrado estudiantes.</p></div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table>
+                <thead><tr><th>Usuario</th><th>Correo</th></tr></thead>
+                <tbody>
+                @foreach (var alumno in Model)
+                {
+                    <tr>
+                        <td><strong>@alumno.Username</strong></td>
+                        <td>@alumno.Email</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
