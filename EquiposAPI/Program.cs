@@ -27,7 +27,7 @@ if (claveJwt.Length < 32)
 // 2. Servicios
 // ---------------------------------------------------------------------------
 builder.Services.AddDbContext<EquiposDbContext>(opciones => opciones.UseSqlServer(cadenaConexion));
-builder.Services.AddAutoMapper(_ => { }, typeof(MappingProfile));
+builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<TokenService>();
 
