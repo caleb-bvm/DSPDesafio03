@@ -25,6 +25,7 @@ button { cursor: pointer; }
 .account form { margin: 0; }
 .text-button { border: 0; color: #174a91; background: #e8effd; border-radius: 999px; padding: 9px 16px; font-weight: 600; }
 .text-button:hover { background: #dce8fb; }
+a.text-button { text-decoration: none; font-size: 14px; white-space: nowrap; }
 
 .page { max-width: 1180px; margin: 0 auto; padding: 36px 24px 72px; }
 .page-title { margin-bottom: 25px; }

@@ -68,6 +68,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       TZ: ${TZ}
       Api__BaseUrl: http://api:8080/
+      Gestion__BaseUrl: http://localhost:5102/   # Enlace que abre el navegador.
       ConnectionStrings__EquiposReportes: Server=db;Database=EquiposDb;User Id=reportes;Password=${REPORTES_PASSWORD};TrustServerCertificate=True
     ports:
       - "5103:8080"

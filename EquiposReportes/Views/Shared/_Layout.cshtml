@@ -1,4 +1,8 @@
-﻿<!DOCTYPE html>
+﻿@{
+    // URL de la aplicación de gestión (EquiposMVC): se lee de appsettings.json (Gestion:BaseUrl).
+    var gestionUrl = Context.RequestServices.GetRequiredService<IConfiguration>()["Gestion:BaseUrl"];
+}
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8" />
@@ -22,6 +26,10 @@
                     <a asp-controller="Reportes" asp-action="Historial">Historial</a>
                 </nav>
                 <div class="account">
+                    @if (!string.IsNullOrWhiteSpace(gestionUrl))
+                    {
+                        <a class="text-button" href="@gestionUrl">← Regresar a Gestión</a>
+                    }
                     <span class="account-name">@User.Identity.Name</span>
                     <form asp-controller="Cuenta" asp-action="Salir" method="post">
                         <button class="text-button" type="submit">Salir</button>
