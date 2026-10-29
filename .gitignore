@@ -10,11 +10,10 @@
 TestResults/
 coverage/
 *.local.json
-/EquiposReportes/wwwroot/lib/
-/EquiposReportes/wwwroot/js/
-/EquiposReportes/wwwroot/favicon.ico
-/EquiposReportes/Views/Shared/_ValidationScriptsPartial.cshtml
-/EquiposReportes/Views/Shared/_Layout.cshtml.css
 
 # Secretos de Docker (los genera iniciar.ps1)
 .env
+
+# Copia local del enunciado (no es un entregable)
+/Indicaciones DSP Desafio 03.html
+/Indicaciones DSP Desafio 03_files/
