@@ -27,14 +27,16 @@ function LeerEnv([string]$nombre) {
 if ($Local) {
     $archivoSecretos = Join-Path $env:APPDATA 'Microsoft\UserSecrets\EquiposLaboratorio-EquiposAPI\secrets.json'
     if (-not (Test-Path $archivoSecretos)) { throw 'Configure primero los User Secrets de EquiposAPI.' }
-    $claveAdmin = (Get-Content $archivoSecretos -Raw | ConvertFrom-Json).'SeedAdmin:Password'
+    $secretos = Get-Content $archivoSecretos -Raw | ConvertFrom-Json
+    $claveAdmin = $secretos.'SeedAdmin:Password'
+    if (-not $ClaveDemo) { $ClaveDemo = $secretos.'SeedDemo:Password' }   # La crea iniciar.ps1 -Local.
 } else {
     $claveAdmin = LeerEnv 'ADMIN_PASSWORD'
     if (-not $claveAdmin) { throw 'No se encontró ADMIN_PASSWORD en .env. Ejecute primero .\iniciar.ps1.' }
 }
 
-# Contraseña de los usuarios de demostración: parámetro, línea DEMO_PASSWORD de .env
-# (con Docker se crea si no existe) o se pide por teclado.
+# Contraseña de los usuarios de demostración: parámetro, User Secrets (SeedDemo:Password),
+# línea DEMO_PASSWORD de .env (con Docker se crea si no existe) o se pide por teclado.
 if (-not $ClaveDemo -and -not $Local) {
     $ClaveDemo = LeerEnv 'DEMO_PASSWORD'
     if (-not $ClaveDemo) {
@@ -76,6 +78,10 @@ function Api([string]$metodo, [string]$ruta, $datos = $null) {
 }
 
 $login = Api 'POST' 'api/auth/login' @{ username = 'admin'; password = $claveAdmin }
+if ($login.Codigo -eq 401) {
+    # El usuario admin se creó con otra contraseña (la API solo lo crea cuando Usuarios está vacía).
+    throw 'La contraseña de admin configurada no coincide con la del usuario admin de la base. Para empezar de cero ejecute .\iniciar.ps1 -ReiniciarBase (agregue -Local si no usa Docker).'
+}
 if ($login.Codigo -ne 200) { throw "No se pudo iniciar sesión como admin (HTTP $($login.Codigo))." }
 $script:token = $login.Datos.token
 Write-Host "Sesión iniciada como admin en $ApiUrl."

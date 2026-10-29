@@ -5,14 +5,14 @@
 USE master;
 GO
 
-IF SUSER_ID(N'reportes') IS NULL
-BEGIN
-    DECLARE @crearLogin nvarchar(max) =
-        N'CREATE LOGIN [reportes] WITH PASSWORD = '
-        + QUOTENAME(N'$(ReportesPassword)', '''')
-        + N', CHECK_POLICY = ON';
-    EXEC (@crearLogin);
-END;
+-- Crea el login, o le asigna la contraseña recibida si ya existía,
+-- para que siempre coincida con la cadena de conexión de Reportes.
+DECLARE @login nvarchar(max) =
+    CASE WHEN SUSER_ID(N'reportes') IS NULL THEN N'CREATE' ELSE N'ALTER' END
+    + N' LOGIN [reportes] WITH PASSWORD = '
+    + QUOTENAME(N'$(ReportesPassword)', '''')
+    + N', CHECK_POLICY = ON';
+EXEC (@login);
 GO
 
 USE EquiposDb;

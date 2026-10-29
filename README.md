@@ -12,49 +12,44 @@ SQL Server `EquiposDb`:
 EquiposMVC nunca se conecta a SQL Server. EquiposReportes lee la base con el
 usuario SQL `reportes`, que solo pertenece a `db_datareader`.
 
-Hay dos formas de arrancar el sistema. La opción A usa Docker y es la más
-rápida. La opción B usa SQL Server Express instalado en el equipo.
+Hay dos formas de arrancar el sistema, y las dos usan el mismo script,
+`iniciar.ps1`. La opción A usa Docker y es la más rápida. La opción B usa el
+SQL Server Express del equipo y guarda los secretos en User Secrets; úsela en
+un equipo sin Docker.
 
-## Opción A: arrancar con Docker (recomendada)
+En las dos opciones el script deja todo en marcha: crea las contraseñas que
+falten, arranca los tres proyectos, espera a que respondan y carga los datos de
+demostración. Al terminar muestra las URL y las contraseñas.
 
-Solo necesita Docker Desktop. No hace falta instalar SQL Server, el SDK de .NET
-ni configurar User Secrets.
+Si PowerShell responde que la ejecución de scripts está deshabilitada,
+anteponga `powershell -ExecutionPolicy Bypass -File` al comando, por ejemplo:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\iniciar.ps1
+```
+
+## Opción A: con Docker
+
+Solo necesita Docker Desktop. No hace falta instalar SQL Server ni el SDK de
+.NET.
 
 1. Abra Docker Desktop y espere a que indique que está en ejecución.
 2. Abra PowerShell en la carpeta de la solución, la que contiene
    `docker-compose.yml`.
-3. Ejecute el script de arranque:
+3. Ejecute:
 
    ```powershell
    .\iniciar.ps1
    ```
 
-   Si PowerShell responde que la ejecución de scripts está deshabilitada, use
-   este comando en su lugar:
-
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File .\iniciar.ps1
-   ```
-
    La primera vez tarda varios minutos, porque descarga las imágenes de
    SQL Server y .NET y compila los tres proyectos.
-4. Espere a que el script termine. Al final muestra las URL y la contraseña del
-   usuario `admin`. Reportes puede tardar unos segundos más que los otros en
-   responder.
-5. Abra `http://localhost:5102` e inicie sesión con `admin` y esa contraseña.
+4. Cuando el script diga `Listo`, abra `http://localhost:5102` e inicie sesión
+   con `admin` y la contraseña que muestra.
 
-El script hace lo siguiente:
-
-- La primera vez crea el archivo `.env` con contraseñas aleatorias para `sa`,
-  `reportes` y `admin`, y con la clave JWT. Git ignora ese archivo.
-- Levanta SQL Server, la API, el MVC y Reportes en contenedores.
-- Al arrancar, la API crea la base con las migraciones y el usuario `admin`.
-  Después, el servicio `db-init` crea el login de solo lectura `reportes`.
-
-Si después necesita la contraseña de `admin`, está en la línea
-`ADMIN_PASSWORD` del archivo `.env`.
-
-Direcciones del sistema en Docker:
+La primera vez, el script crea el archivo `.env` con contraseñas aleatorias para
+`sa`, `reportes`, `admin` y los usuarios de demostración, y con la clave JWT.
+Git ignora ese archivo. Si después necesita alguna contraseña, búsquela ahí.
 
 | Qué | Dónde |
 | --- | --- |
@@ -66,171 +61,115 @@ Direcciones del sistema en Docker:
 Comandos útiles:
 
 ```powershell
-docker compose stop        # Detiene todo y conserva los datos.
-docker compose up -d       # Vuelve a arrancar lo que se detuvo.
-docker compose down -v     # Borra todo, incluida la base, para empezar de cero.
-docker compose logs api    # Muestra los mensajes de la API.
+docker compose stop                # Detiene todo y conserva los datos.
+.\iniciar.ps1                      # Vuelve a arrancar; no duplica los datos.
+.\iniciar.ps1 -ReiniciarBase       # Borra la base y empieza de cero.
+docker compose logs api            # Muestra los mensajes de la API.
 ```
 
-Las contraseñas de `.env` solo se aplican cuando la base se crea por primera
-vez. Si borra o cambia `.env`, ejecute también `docker compose down -v` antes
-de volver a ejecutar `.\iniciar.ps1`; de lo contrario, la base conserva las
-contraseñas anteriores y la API no podrá conectarse.
+Las contraseñas de `.env` solo se aplican cuando la base se crea. Si borra o
+cambia `.env`, arranque con `.\iniciar.ps1 -ReiniciarBase`; de lo contrario, la
+base conserva las contraseñas anteriores y la API no podrá conectarse.
 
-## Opción B: arrancar sin Docker
+## Opción B: sin Docker
 
 ### Requisitos
 
 - SDK de .NET 10. Los tres proyectos usan la misma versión.
-- SQL Server Express con la instancia `.\SQLEXPRESS` y SSMS.
-- La herramienta `dotnet-ef` versión 10, para migraciones y scaffold.
-- Postman, para la colección de pruebas.
+- SQL Server Express con la instancia `.\SQLEXPRESS`, y SSMS.
+- `sqlcmd`, que se instala con SQL Server. Para comprobarlo, ejecute
+  `sqlcmd -?`.
 
-Si la instancia de SQL Server tiene otro nombre, use ese nombre en las cadenas
-de conexión de los pasos 2 y 5.
-
-Ejecute todos los comandos desde la carpeta de la solución.
-
-### Paso 1: activar la autenticación de SQL Server
+### Paso 1: activar la autenticación de SQL Server (una sola vez por equipo)
 
 El login `reportes` es un usuario de SQL Server, así que la instancia debe
-aceptar ese tipo de inicio de sesión.
+aceptar ese tipo de inicio de sesión. Si no lo acepta, el script se detiene y
+muestra estas mismas instrucciones.
 
 1. En SSMS, haga clic derecho sobre el servidor y elija **Propiedades**.
 2. En **Seguridad**, marque **Modo de autenticación de SQL Server y de
-   Windows**.
-3. Reinicie la instancia.
+   Windows** y acepte.
+3. Haga clic derecho sobre el servidor y elija **Reiniciar**.
 
-La API puede seguir conectándose con autenticación de Windows.
+La API sigue conectándose con autenticación de Windows.
 
-### Paso 2: configurar los secretos de la API
+### Paso 2: arrancar
 
-La cadena de conexión, la clave JWT y la contraseña inicial de `admin` se
-guardan en User Secrets, fuera del repositorio. Sustituya cada valor entre
-`< >` por el suyo:
+Abra PowerShell en la carpeta de la solución y ejecute:
 
 ```powershell
-dotnet user-secrets set "ConnectionStrings:EquiposDb" "Server=.\SQLEXPRESS;Database=EquiposDb;Trusted_Connection=True;TrustServerCertificate=True" --project EquiposAPI
-dotnet user-secrets set "Jwt:Key" "<clave-aleatoria-de-al-menos-32-caracteres>" --project EquiposAPI
-dotnet user-secrets set "SeedAdmin:Password" "<contraseña-de-al-menos-8-caracteres>" --project EquiposAPI
+.\iniciar.ps1 -Local
 ```
 
-La API no arranca si falta la cadena de conexión o si la clave JWT tiene menos
-de 32 caracteres.
+Si la instancia tiene otro nombre, indíquelo con `-Instancia`, por ejemplo
+`.\iniciar.ps1 -Local -Instancia "EQUIPO\SQLEXPRESS"`.
 
-### Paso 3: crear la base de datos
+El script hace lo siguiente, en este orden:
 
-Si no tiene `dotnet-ef`, instálelo. Luego aplique las migraciones:
+1. Revisa que estén el SDK, `sqlcmd`, la instancia y la autenticación de SQL
+   Server, y que los puertos 5101 a 5103 estén libres.
+2. Crea en User Secrets los secretos que falten. Los que ya existen no se
+   modifican.
+3. Compila la solución y abre una ventana de PowerShell con la API. Al arrancar,
+   la API crea la base con las migraciones y el usuario `admin`.
+4. Crea el login `reportes` con `EquiposReportes/sql/crear_usuario_reportes.sql`,
+   solo con el rol `db_datareader`.
+5. Abre una ventana para el MVC y otra para Reportes.
+6. Carga los datos de demostración y muestra las URL y las contraseñas.
+
+Para detener el sistema, cierre las tres ventanas de PowerShell. Para empezar
+con una base vacía, use `.\iniciar.ps1 -Local -ReiniciarBase`.
+
+Los secretos que usa el sistema son estos:
+
+| Proyecto | Secreto | Contenido |
+| --- | --- | --- |
+| EquiposAPI | `ConnectionStrings:EquiposDb` | Conexión a `EquiposDb` con autenticación de Windows |
+| EquiposAPI | `Jwt:Key` | Clave del JWT, de al menos 32 caracteres |
+| EquiposAPI | `SeedAdmin:Password` | Contraseña con la que se crea el usuario `admin` |
+| EquiposAPI | `SeedDemo:Password` | Contraseña de los usuarios de demostración; solo la usa `scripts/CargarDatosDemo.ps1` |
+| EquiposReportes | `ConnectionStrings:EquiposReportes` | Conexión a `EquiposDb` con el usuario `reportes` |
+
+Para verlos:
 
 ```powershell
-dotnet tool install --global dotnet-ef --version 10.0.13
-dotnet ef database update --project EquiposAPI
+dotnet user-secrets list --project EquiposAPI
+dotnet user-secrets list --project EquiposReportes
 ```
 
-Este paso es opcional, porque la API también aplica las migraciones pendientes
-al arrancar. En cualquiera de los dos casos, si la tabla `Usuarios` está vacía,
-la API crea el usuario `admin` con la contraseña del paso 2.
+La API solo crea el usuario `admin` cuando la tabla `Usuarios` está vacía. Si
+cambia `SeedAdmin:Password` en una base que ya tiene usuarios, la contraseña de
+`admin` no cambia; el script lo detecta al cargar los datos y le indica usar
+`-ReiniciarBase`.
 
-### Paso 4: crear el login de solo lectura `reportes`
-
-La base `EquiposDb` debe existir antes de este paso.
-
-1. En SSMS, abra `EquiposReportes/sql/crear_usuario_reportes.sql`.
-2. Active **Consulta > Modo SQLCMD**.
-3. Agregue esta línea al principio de la pestaña, con una contraseña suya:
-
-   ```sql
-   :setvar ReportesPassword "contraseña-local-fuerte"
-   ```
-
-4. Ejecute el script.
-5. Cierre la pestaña sin guardar, para que la contraseña no quede en el
-   archivo ni en Git.
-
-El script crea el login, el usuario de la base y lo agrega únicamente a
-`db_datareader`.
-
-### Paso 5: configurar la conexión de Reportes
-
-Use la contraseña que eligió en el paso 4:
-
-```powershell
-dotnet user-secrets set "ConnectionStrings:EquiposReportes" "Server=.\SQLEXPRESS;Database=EquiposDb;User Id=reportes;Password=<contraseña-del-paso-4>;TrustServerCertificate=True" --project EquiposReportes
-```
-
-Las URL de la API sí están en los `appsettings.json` de los clientes, porque no
-son secretos. La cadena de conexión, la clave JWT y las contraseñas nunca se
+Las URL de la API están en los `appsettings.json` de los clientes porque no son
+secretos. Las cadenas de conexión, la clave JWT y las contraseñas nunca se
 guardan en archivos versionados.
 
-### Paso 6: arrancar los tres proyectos
+## Datos de demostración
 
-Abra tres terminales en la carpeta de la solución y ejecute un comando en cada
-una, en este orden. Arranque primero la API, porque es la que crea la base y el
-usuario `admin`.
-
-```powershell
-dotnet run --project EquiposAPI --urls http://localhost:5101
-```
-
-```powershell
-dotnet run --project EquiposMVC --urls http://localhost:5102
-```
-
-```powershell
-dotnet run --project EquiposReportes --urls http://localhost:5103
-```
-
-### Paso 7: entrar al sistema
-
-1. Abra `http://localhost:5102` e inicie sesión con `admin` y la contraseña del
-   paso 2.
-2. Para ver los reportes, elija **Reportes** en el menú. Reportes vuelve a pedir
-   usuario y contraseña, y los valida contra la API.
-3. Swagger está en `http://localhost:5101/swagger` mientras el entorno sea
-   Development.
-
-Si olvidó la contraseña de `admin`, consúltela así:
-
-```powershell
-dotnet user-secrets list --project EquiposAPI | Select-String 'SeedAdmin:Password'
-```
-
-Cambiar ese secreto después no cambia la contraseña de `admin`, porque la API
-solo crea el usuario cuando la tabla `Usuarios` está vacía.
-
-## Cargar datos de demostración
-
-Una base recién creada solo tiene las 4 categorías y el usuario `admin`, así
-que las listas y los reportes salen vacíos. `scripts/CargarDatosDemo.ps1` carga
-datos de ejemplo llamando a la API, igual que lo haría el MVC:
+Una base nueva solo tiene las 4 categorías y el usuario `admin`. Por eso
+`iniciar.ps1` ejecuta `scripts/CargarDatosDemo.ps1`, que carga estos datos
+llamando a la API, igual que lo haría el MVC:
 
 - 2 docentes (`mlopez`, `jhernandez`) y 4 estudiantes (`acastro`, `dmartinez`,
-  `sramirez`, `kflores`).
+  `sramirez`, `kflores`), todos con la misma contraseña de demostración.
 - 15 equipos repartidos en las 4 categorías, 2 de ellos en Mantenimiento.
 - 15 préstamos ya devueltos y 6 activos, para el historial y el Top 5.
 
-Con la API encendida, ejecute el comando que corresponda a su forma de arranque:
-
-```powershell
-.\scripts\CargarDatosDemo.ps1           # Opción A (Docker)
-.\scripts\CargarDatosDemo.ps1 -Local    # Opción B (sin Docker)
-```
-
-Con Docker, la contraseña de los usuarios de demostración se genera la primera
-vez y queda en la línea `DEMO_PASSWORD` de `.env`. Con `-Local`, el script la
-pide por teclado. Si ejecuta el script otra vez, no duplica usuarios, equipos ni
-préstamos.
+El script no duplica nada si se ejecuta otra vez. Para arrancar sin estos datos,
+agregue `-SinDatos` a `iniciar.ps1`.
 
 ### Préstamos vencidos para el reporte
 
 La API registra cada préstamo con la fecha de hoy y no acepta vencimientos en el
 pasado, así que los préstamos recién cargados todavía no están vencidos. Para
 mostrar el reporte de vencidos en la demostración, abra
-`sql/DemoPrestamosVencidos.sql` en SSMS y ejecútelo con el usuario `sa`. El
-script mueve al pasado las fechas de 3 préstamos activos (equipos `IOT-002`,
-`LAP-003` y `ARD-003`) y muestra el resultado. Es un ajuste de datos de prueba
-hecho por el administrador de la base; la aplicación sigue sin escribir directo
-en SQL Server.
+`sql/DemoPrestamosVencidos.sql` en SSMS y ejecútelo con `sa` (opción A) o con
+su usuario de Windows (opción B). El script mueve al pasado las fechas de 3
+préstamos activos (equipos `IOT-002`, `LAP-003` y `ARD-003`) y muestra el
+resultado. Es un ajuste de datos de prueba hecho por el administrador de la
+base; la aplicación sigue sin escribir directo en SQL Server.
 
 ## Roles
 
@@ -241,6 +180,8 @@ en SQL Server.
 | Estudiante | Ver los equipos disponibles y solo sus propios préstamos |
 
 Solo el Admin registra usuarios nuevos, desde **Usuarios** en el menú del MVC.
+Para ver los reportes, el Admin elige **Reportes** en el menú; Reportes vuelve a
+pedir usuario y contraseña y los valida contra la API.
 
 ## Cómo se comportan préstamos, ediciones y reportes
 
@@ -308,8 +249,10 @@ con las consultas de `sql/VerificarReportes.sql` en SSMS. Los resultados de los
 | `docs/evidencias/` | Salidas y notas de cada prueba |
 | `docs/Contratos.md` | Rutas y datos que intercambian los proyectos |
 
-Para volver a generar `sql/EquiposDb.sql` después de una migración nueva:
+Para volver a generar `sql/EquiposDb.sql` después de una migración nueva
+(necesita la herramienta `dotnet-ef`):
 
 ```powershell
+dotnet tool install --global dotnet-ef --version 10.0.13
 dotnet ef migrations script --idempotent --project EquiposAPI --output sql/EquiposDb.sql
 ```
