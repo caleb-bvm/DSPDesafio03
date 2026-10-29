@@ -104,6 +104,9 @@ tbody tr:hover { background: #fafcff; }
 .status-prestado, .status-activo { color: var(--blue-dark); background: var(--blue-soft); }
 .status-mantenimiento { color: #785407; background: var(--yellow-soft); }
 .status-vencido { color: #942f28; background: var(--danger-soft); }
+.status-admin { color: var(--blue-dark); background: var(--blue-soft); }
+.status-docente { color: #785407; background: var(--yellow-soft); }
+.status-estudiante { color: var(--success); background: var(--success-soft); }
 .empty-state { text-align: center; padding: 3.5rem 1rem; }
 .empty-state h2 { font-size: 1.3rem; margin-bottom: .4rem; }
 .empty-state p { color: var(--muted); margin: 0; }

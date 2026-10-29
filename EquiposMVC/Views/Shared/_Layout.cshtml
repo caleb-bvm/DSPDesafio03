@@ -33,7 +33,7 @@
                     @if (rol == "Admin")
                     {
                         <a class="nav-link @(controller == "Categoria" ? "active" : "")" asp-controller="Categoria" asp-action="Index">Categorías</a>
-                        <a class="nav-link @(controller == "Auth" ? "active" : "")" asp-controller="Auth" asp-action="Register">Usuarios</a>
+                        <a class="nav-link @(controller == "Auth" ? "active" : "")" asp-controller="Auth" asp-action="Usuarios">Usuarios</a>
                         @if (!string.IsNullOrWhiteSpace(reportesUrl))
                         {
                             <a class="nav-link" href="@reportesUrl">Reportes</a>

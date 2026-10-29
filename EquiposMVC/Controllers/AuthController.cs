@@ -52,6 +52,19 @@ public class AuthController(AuthService auth) : AppController
         return RedirectToAction(nameof(Login));
     }
 
+    // GET /Auth/Usuarios  (solo Admin)
+    [HttpGet]
+    public async Task<IActionResult> Usuarios()
+    {
+        var acceso = VerificarAcceso("Admin");
+        if (acceso is not null) return acceso;
+
+        var resultado = await auth.Usuarios();
+        if (!resultado.Ok) return PaginaDeError(resultado);
+
+        return View(resultado.Data);
+    }
+
     // GET /Auth/Register  (solo Admin)
     [HttpGet]
     public IActionResult Register()
@@ -72,7 +85,7 @@ public class AuthController(AuthService auth) : AppController
         if (resultado.Ok)
         {
             TempData["Success"] = $"Usuario {resultado.Data!.Username} creado.";
-            return RedirectToAction("Index", "Equipo");
+            return RedirectToAction(nameof(Usuarios));
         }
 
         // 409 (username repetido) o 400: se muestra el mensaje y se conserva lo escrito.
