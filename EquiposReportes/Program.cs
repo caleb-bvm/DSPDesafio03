@@ -30,8 +30,12 @@ builder.Services.AddScoped<ReportesService>();
 
 var app = builder.Build();
 
-if (!app.Environment.IsDevelopment())
-    app.UseExceptionHandler("/Home/Error");
+// Un error inesperado muestra una página genérica, también en Development:
+// el usuario nunca ve detalles internos (pila de llamadas, mensajes de .NET).
+app.UseExceptionHandler("/Home/Error");
+
+// Una respuesta 4xx o 5xx sin contenido (ruta inexistente...) muestra la misma página.
+app.UseStatusCodePagesWithReExecute("/Home/Error/{0}");
 
 app.UseStaticFiles();
 app.UseRouting();

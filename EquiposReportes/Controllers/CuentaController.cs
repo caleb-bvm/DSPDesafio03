@@ -84,5 +84,9 @@ public class CuentaController(IHttpClientFactory httpClientFactory) : Controller
 
     // GET /Cuenta/AccesoDenegado
     [AllowAnonymous]
-    public IActionResult AccesoDenegado() => View();
+    public IActionResult AccesoDenegado()
+    {
+        Response.StatusCode = StatusCodes.Status403Forbidden;
+        return View();
+    }
 }
