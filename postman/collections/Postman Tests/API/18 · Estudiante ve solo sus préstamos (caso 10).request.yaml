@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/api/prestamos?usuarioId=1"
+method: GET
+queryParams:
+  usuarioId: "1"
+auth:
+  type: bearer
+  credentials:
+    token: "{{studentToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      const prestamos = pm.response.json();
+      pm.test("Solo préstamos propios", () => {
+        pm.expect(prestamos).to.be.an("array");
+        prestamos.forEach(p => pm.expect(String(p.usuarioId)).to.eql(String(pm.collectionVariables.get("studentId"))));
+      });
+    language: text/javascript
+order: 18000

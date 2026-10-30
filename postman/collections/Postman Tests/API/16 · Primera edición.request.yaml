@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{baseUrl}}/api/equipos/{{equipoConcurrenciaId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "codigoInventario": "{{codigoConcurrencia}}",
+      "nombre": "Proyector actualizado",
+      "descripcion": "Primer cambio",
+      "categoriaId": {{categoriaId}},
+      "estado": "Disponible",
+      "rowVersion": "{{rowVersionAnterior}}"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminToken}}"
+scripts:
+  - type: afterResponse
+    code: pm.test("Primera edición aceptada", () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));
+    language: text/javascript
+order: 16000

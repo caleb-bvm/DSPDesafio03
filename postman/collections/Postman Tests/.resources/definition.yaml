@@ -1,0 +1,21 @@
+$kind: collection
+description: Ejecutar en orden. Completar adminPassword y studentPassword como variables locales en Postman antes de iniciar. Los casos 11 y 12 se verifican manualmente en MVC y Reportes. No guardar contraseñas reales en el archivo exportado.
+variables:
+  baseUrl: http://localhost:5101
+  adminUsername: admin
+  adminPassword: ""
+  studentUsername: estudiante_prueba
+  studentEmail: estudiante_prueba@ejemplo.local
+  studentPassword: ""
+  adminToken: ""
+  studentToken: ""
+  studentId: ""
+  categoriaId: ""
+  codigoPrestamo: ""
+  equipoPrestamoId: ""
+  prestamoId: ""
+  vencimiento3: ""
+  vencimiento15: ""
+  codigoConcurrencia: ""
+  equipoConcurrenciaId: ""
+  rowVersionAnterior: ""

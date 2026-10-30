@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/api/equipos/{{equipoConcurrenciaId}}"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      pm.collectionVariables.set("rowVersionAnterior", pm.response.json().rowVersion);
+    language: text/javascript
+order: 15000

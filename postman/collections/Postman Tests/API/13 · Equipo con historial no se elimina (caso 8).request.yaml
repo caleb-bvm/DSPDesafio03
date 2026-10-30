@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/api/equipos/{{equipoPrestamoId}}"
+method: DELETE
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminToken}}"
+scripts:
+  - type: afterResponse
+    code: pm.test("HTTP 409", () => pm.response.to.have.status(409));
+    language: text/javascript
+order: 13000

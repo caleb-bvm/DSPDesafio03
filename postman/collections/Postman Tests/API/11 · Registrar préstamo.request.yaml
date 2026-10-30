@@ -1,0 +1,31 @@
+$kind: http-request
+url: "{{baseUrl}}/api/prestamos"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "equipoId": {{equipoPrestamoId}},
+      "usuarioId": {{studentId}},
+      "fechaVencimiento": "{{vencimiento3}}",
+      "observaciones": "Prueba Postman"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      const d = new Date();
+      d.setDate(d.getDate() + 3);
+      pm.collectionVariables.set("vencimiento3", d.toISOString());
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test("Préstamo creado", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));
+      pm.collectionVariables.set("prestamoId", pm.response.json().id);
+    language: text/javascript
+order: 11000

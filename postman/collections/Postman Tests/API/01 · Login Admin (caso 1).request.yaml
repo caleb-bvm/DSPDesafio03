@@ -1,0 +1,27 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "username": "{{adminUsername}}",
+      "password": "{{adminPassword}}"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      const r = pm.response.json();
+      pm.collectionVariables.set("adminToken", r.token);
+      pm.test("Token y rol Admin", () => {
+        pm.expect(r.rol).to.eql("Admin");
+        const payload = JSON.parse(atob(r.token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        pm.expect(Object.values(payload)).to.include("Admin");
+      });
+    language: text/javascript
+order: 1000

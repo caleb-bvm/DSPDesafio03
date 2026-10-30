@@ -1,0 +1,28 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/register"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "username": "{{studentUsername}}",
+      "email": "{{studentEmail}}",
+      "password": "{{studentPassword}}",
+      "rol": "Estudiante"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminToken}}"
+scripts:
+  - type: beforeRequest
+    code: pm.collectionVariables.set("studentUsername", "estudiante_prueba_" + Date.now());
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test("Usuario creado", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));
+      pm.collectionVariables.set("studentId", pm.response.json().id);
+    language: text/javascript
+order: 5000

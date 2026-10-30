@@ -219,9 +219,10 @@ Funciona con las dos opciones de arranque, porque usa `http://localhost:5101`.
 3. Ejecute la carpeta **API · ejecución ordenada** completa y en orden, por
    ejemplo con **Run collection**.
 
-La petición 05 crea el usuario `estudiante_prueba`. En una segunda ejecución
-esa petición falla porque el usuario ya existe. Antes de repetir, cambie la
-variable `studentUsername` o empiece con una base nueva.
+La petición 05 crea un usuario nuevo en cada ejecución, con el nombre
+`estudiante_prueba_` más un número, así que la carpeta se puede repetir sin
+cambiar variables. Cada ejecución deja en la base ese usuario, dos equipos y un
+préstamo, y esos datos aparecen en los reportes.
 
 ### Script de PowerShell (casos 1 a 10)
 
