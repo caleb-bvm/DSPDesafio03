@@ -10,6 +10,8 @@
 TestResults/
 coverage/
 *.local.json
+scripts/
+.env
 
 # Copia local del enunciado (no es un entregable)
 /Indicaciones DSP Desafio 03.html
