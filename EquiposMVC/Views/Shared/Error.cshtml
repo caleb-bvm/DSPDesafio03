@@ -1,0 +1,38 @@
+@model int
+@{
+    // Texto de cada código HTTP. Los códigos sin texto propio caen en los dos últimos casos.
+    var (titulo, mensaje) = Model switch
+    {
+        400 => ("Solicitud no válida", "No pudimos procesar los datos enviados. Vuelve a cargar la página e inténtalo otra vez."),
+        401 => ("Inicia sesión para continuar", "Necesitas una sesión activa para ver esta página."),
+        402 => ("Función no disponible", "Esta función requiere un pago y no está incluida en el servicio."),
+        403 => ("Acceso denegado", "Tu cuenta no tiene permiso para realizar esta acción."),
+        404 => ("No encontramos esta página", "Puede que el registro se haya eliminado o que la dirección haya cambiado."),
+        405 => ("Acción no permitida", "Esta dirección no admite la acción que intentaste realizar."),
+        408 => ("La solicitud tardó demasiado", "El servidor dejó de esperar tu solicitud. Inténtalo de nuevo."),
+        409 => ("Hay un conflicto con los datos", "La información cambió mientras trabajabas. Vuelve a cargarla e inténtalo otra vez."),
+        413 => ("El contenido es demasiado grande", "Reduce la información enviada e inténtalo de nuevo."),
+        415 => ("Formato no admitido", "El servidor no acepta el formato de la información enviada."),
+        429 => ("Demasiadas solicitudes", "Espera un momento antes de intentarlo de nuevo."),
+        500 => ("Ocurrió un error", "Tuvimos un problema inesperado. Inténtalo de nuevo más tarde."),
+        502 or 504 => ("El servicio no respondió", "No recibimos una respuesta válida a tiempo. Inténtalo de nuevo más tarde."),
+        503 => ("Servicio no disponible", "El servicio no está disponible. Inténtalo de nuevo más tarde."),
+        >= 500 => ("Ocurrió un error", "Tuvimos un problema en el servidor. Inténtalo de nuevo más tarde."),
+        _ => ("No se pudo completar la solicitud", "Revisa la dirección o vuelve al inicio.")
+    };
+    ViewData["Title"] = titulo;
+}
+<section class="message-card">
+    <div class="message-icon" aria-hidden="true">@(Model == 404 ? "?" : "!")</div>
+    <span class="eyebrow">Error @Model</span>
+    <h1>@titulo</h1>
+    <p>@mensaje</p>
+    @if (Model == 401)
+    {
+        <a class="button button-primary" asp-controller="Auth" asp-action="Login">Iniciar sesión</a>
+    }
+    else
+    {
+        <a class="button button-primary" asp-controller="Equipo" asp-action="Index">Volver a equipos</a>
+    }
+</section>

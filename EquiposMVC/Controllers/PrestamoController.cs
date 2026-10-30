@@ -112,7 +112,7 @@ public class PrestamoController(PrestamoService prestamos, EquipoService equipos
         if (!resultado.Ok) return PaginaDeError(resultado);
 
         var prestamo = resultado.Data!.FirstOrDefault(p => p.Id == id);
-        return prestamo is null ? View("NotFound") : View("Edit", prestamo);
+        return prestamo is null ? StatusCode(StatusCodes.Status404NotFound) : View("Edit", prestamo);
     }
 
     // Llena ViewBag con los equipos disponibles y los usuarios para los <select>.

@@ -20,7 +20,7 @@ public abstract class AppController : Controller
             return RedirectToAction("Login", "Auth");
 
         if (roles.Length > 0 && !roles.Contains(Rol))
-            return View("AccessDenied");
+            return StatusCode(StatusCodes.Status403Forbidden);
 
         return null;
     }
@@ -37,16 +37,10 @@ public abstract class AppController : Controller
                 TempData["Error"] = "Tu sesión venció. Inicia sesión de nuevo.";
                 return RedirectToAction("Login", "Auth");
 
-            // 403: tiene sesión, pero su rol no permite la acción.
-            case HttpStatusCode.Forbidden:
-                return View("AccessDenied");
-
-            case HttpStatusCode.NotFound:
-                return View("NotFound");
-
-            // 5xx o API apagada: mensaje genérico, sin detalles internos.
+            // 403 (su rol no permite la acción), 404, 5xx o API apagada (503): el código
+            // llega a Home/Error, que muestra un mensaje genérico, sin detalles internos.
             default:
-                return View("Unavailable", "El servicio no está disponible. Inténtalo de nuevo más tarde.");
+                return StatusCode((int)resultado.Status);
         }
     }
 }
