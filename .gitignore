@@ -11,9 +11,6 @@ TestResults/
 coverage/
 *.local.json
 
-# Secretos de Docker (los genera iniciar.ps1)
-.env
-
 # Copia local del enunciado (no es un entregable)
 /Indicaciones DSP Desafio 03.html
 /Indicaciones DSP Desafio 03_files/
